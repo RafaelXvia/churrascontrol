@@ -1,0 +1,17 @@
+# Diretórios e arquivos ignorados pela Discloud no upload
+.git
+.gemini
+__pycache__
+venv
+.env
+.vscode
+.cache
+test_*.py
+docs
+openspec
+xano
+scratch
+churras_data.json
+*.zip
+*.db-shm
+*.db-wal

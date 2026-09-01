@@ -1,0 +1,26 @@
+# Python bytecode e caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+
+# IDE e ferramentas
+.gemini/
+.vscode/
+.idea/
+.cache/
+
+# Arquivos temporários do SQLite WAL
+churrascontrol.db-shm
+churrascontrol.db-wal
+
+# Arquivos compactados residuais
+*.zip
+
+# Variáveis de ambiente locais
+.env

@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Project: ChurrasControl - Sistema de Frente de Caixa e Gestão de Mesas.
+  Domain: Operação de salão, comandas, catálogo de produtos do PDV e relatórios financeiros executivos.
+  Tech stack: Python, FastAPI, Pydantic, Streamlit, ReportLab, Docker (PostgreSQL) e Xano Sync.
+  Frontend: Streamlit é a tecnologia obrigatória para implementação das interfaces frontend do projeto. Não introduzir outra tecnologia de frontend sem uma mudança explícita da decisão arquitetural.
+  Architecture: Backend é a autoridade máxima em validações e persistência; imutabilidade contábil com histórico de preços nas comandas; suporte a cache JSON e sincronização em fila background.
+  Security: Validações estritas de inputs, tratamento de conflitos de código PDV e proteção de integridade nas finalizações de comanda.
+  Development: Ciclo incremental estritamente guiado por OpenSpec (Explore -> Propose -> Review -> Apply -> Archive).
+  Language: Escrever todos os artefatos de documentação, especificações e tarefas em Português Brasileiro (pt-BR).
+
+rules:
+  proposal:
+    - Definir claramente o problema de negócio, objetivo e escopo delimitado da mudança.
+    - Declarar explicitamente o que está fora do escopo para evitar scope creep.
+  specs:
+    - Escrever requisitos de sistema claros e verificáveis.
+    - Utilizar cenários orientados a comportamento (ex: Mesa aberta, lançamento de item, encerramento).
+  tasks:
+    - Dividir a implementação em tarefas atômicas e testáveis.
+    - Seguir a ordem de dependências do backend até o frontend.
+
+operations:
+  apply:
+    guidance:
+      - Respeitar a integridade das assinaturas de rotas já existentes no FastAPI.
+      - Garantir que o cache local e as chamadas assíncronas do Xano continuem desacopladas.
+  archive:
+    guidance:
+      - Validar se todos os cenários da especificação foram contemplados antes de arquivar.
