@@ -7,7 +7,7 @@
 ## 2. Padrões de Arquitetura e Código
 - **Backend**: Python 3.10+ utilizando FastAPI com tipagem estrita via Pydantic.
 - **Frontend**: O frontend do projeto deve ser implementado exclusivamente com **Streamlit**. Não introduza React, Vue, Angular, Next.js, Jinja2 ou outra tecnologia de frontend para substituir ou complementar o Streamlit, salvo quando houver uma alteração arquitetural explicitamente aprovada para o projeto.
-- **Persistência**: Manter compatibilidade entre o cache estruturado em `churras_data.json`, banco relacional PostgreSQL (`init.sql`) e chamadas assíncronas do Xano via fila background (`xano_background_worker`).
+- **Persistência**: Persistência relacional transacional em SQLite embutido (`churrascontrol.db` em modo WAL) com fila persistente de sincronização para o Xano (`fila_sincronizacao`).
 - **Imutabilidade Histórica**: Preços de itens lançados em comanda nunca devem depender de lookup dinâmico do produto em tempo de fechamento. Salve sempre `preco_momento` e `nome_produto_historico`.
 
 ## 3. Segurança e Robustez

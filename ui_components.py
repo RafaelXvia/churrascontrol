@@ -903,9 +903,9 @@ def render_footer():
             <span>Gestão Gastronômica & PDV em Alta Disponibilidade</span>
         </div>
         <div class="cc-footer-badges">
-            <span class="cc-footer-pill">💾 Persistência: churras_data.json</span>
+            <span class="cc-footer-pill">🗄️ Persistência: SQLite (WAL)</span>
             <span class="cc-footer-pill">⚡ Latência: Imediata</span>
-            <span class="cc-footer-pill">🔄 Worker Xano: Fila 2.5s</span>
+            <span class="cc-footer-pill">🔄 Worker Xano: Fila Persistente</span>
             <span class="cc-footer-pill">© 2026 Innovation Lab</span>
         </div>
     </div>

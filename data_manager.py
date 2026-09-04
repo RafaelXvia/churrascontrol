@@ -1,13 +1,16 @@
 """
 Módulo de Dados e Gerenciamento de Estado — ChurrasControl
-Persistência relacional transacional de alta performance via SQLite embutido (WAL mode),
-com arquitetura Local-First (atualização otimista imediata) e fila persistente
-em disco para sincronização desacoplada e resiliente com o Xano.
+Persistência relacional transacional de alta integridade via SQLite embutido (WAL mode),
+com paridade estrita de regras de negócio em relação ao Xano (Dual Single Source of Truth).
+Inclui sanitização contra XSS, constraints de domínio (preços, quantidades e cardinalidade única de comanda),
+cooldown adaptativo de sincronização e autenticação segura com Xano.
 """
 import os
 import io
+import html
 import json
 import time
+import logging
 import sqlite3
 import threading
 from datetime import datetime
@@ -21,48 +24,54 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("ChurrasControl")
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "churrascontrol.db")
 LEGACY_JSON_PATH = os.path.join(os.path.dirname(__file__), "churras_data.json")
 XANO_BASE_URL = os.getenv("XANO_BASE_URL", "https://x8ki-letl-twmt.n7.xano.io/api:churrascontrol")
+XANO_API_KEY = os.getenv("XANO_API_KEY", os.getenv("XANO_AUTH_TOKEN", ""))
 
 _db_lock = threading.Lock()
+_last_xano_call_time = 0.0
+RATE_LIMIT_COOLDOWN = 2.5
 
 def get_connection() -> sqlite3.Connection:
-    """Retorna uma conexão SQLite configurada com WAL e timeout para concorrência segura."""
-    conn = sqlite3.connect(DB_PATH, timeout=20.0, check_same_thread=False)
+    """Retorna uma conexão SQLite configurada com WAL, timeout e chaves estrangeiras ativas."""
+    conn = sqlite3.connect(DB_PATH, timeout=25.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
 def init_db():
-    """Inicializa as tabelas no SQLite se não existirem e migra dados legados."""
+    """Inicializa as tabelas no SQLite com constraints rígidas, índices e migração de colunas."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
             
-            # 1. Tabela de Produtos
+            # 1. Tabela de Produtos com verificação de preço estritamente positivo
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS produtos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 codigo_pdv TEXT UNIQUE NOT NULL,
                 nome TEXT NOT NULL,
                 categoria TEXT NOT NULL,
-                preco_unitario REAL NOT NULL
+                preco_unitario REAL NOT NULL CHECK(preco_unitario > 0)
             );
             """)
 
-            # 2. Tabela de Mesas
+            # 2. Tabela de Mesas com capacidade mínima e status restrito
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS mesas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 numero_mesa INTEGER UNIQUE NOT NULL,
-                capacidade INTEGER DEFAULT 1,
-                status TEXT DEFAULT 'OCUPADA'
+                capacidade INTEGER NOT NULL DEFAULT 1 CHECK(capacidade >= 1),
+                status TEXT NOT NULL DEFAULT 'OCUPADA' CHECK(status IN ('LIVRE', 'OCUPADA'))
             );
             """)
 
-            # 3. Tabela de Comandas
+            # 3. Tabela de Comandas com cardinalidade e integridade financeira
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS comandas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,15 +79,21 @@ def init_db():
                 numero_mesa_historico INTEGER NOT NULL,
                 data_abertura TEXT NOT NULL,
                 data_fechamento TEXT,
-                status TEXT DEFAULT 'ABERTA',
-                taxa_servico INTEGER DEFAULT 1,
-                qtd_pessoas INTEGER DEFAULT 1,
-                valor_total REAL DEFAULT 0.0,
+                status TEXT NOT NULL DEFAULT 'ABERTA' CHECK(status IN ('ABERTA', 'PAGA', 'CANCELADA')),
+                taxa_servico INTEGER NOT NULL DEFAULT 1 CHECK(taxa_servico IN (0, 1)),
+                qtd_pessoas INTEGER NOT NULL DEFAULT 1 CHECK(qtd_pessoas >= 1),
+                valor_total REAL NOT NULL DEFAULT 0.0 CHECK(valor_total >= 0.0),
                 FOREIGN KEY(mesa_id) REFERENCES mesas(id) ON DELETE SET NULL
             );
             """)
 
-            # 4. Tabela de Itens de Comanda (Imutabilidade de preços)
+            # REGRA DE OURO RELACIONAL: No máximo uma comanda ABERTA por mesa física
+            cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_comanda_unica_aberta 
+            ON comandas(mesa_id) WHERE status = 'ABERTA';
+            """)
+
+            # 4. Tabela de Itens de Comanda (Imutabilidade de preços e verificação de quantidade positiva)
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS itens_comanda (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,26 +101,40 @@ def init_db():
                 produto_id INTEGER,
                 nome_produto_historico TEXT NOT NULL,
                 categoria_historico TEXT,
-                quantidade INTEGER NOT NULL DEFAULT 1,
-                preco_momento REAL NOT NULL,
+                quantidade INTEGER NOT NULL DEFAULT 1 CHECK(quantidade >= 1),
+                preco_momento REAL NOT NULL CHECK(preco_momento >= 0.0),
                 observacao TEXT DEFAULT '',
-                FOREIGN KEY(comanda_id) REFERENCES comandas(id) ON DELETE CASCADE
+                FOREIGN KEY(comanda_id) REFERENCES comandas(id) ON DELETE CASCADE,
+                FOREIGN KEY(produto_id) REFERENCES produtos(id) ON DELETE SET NULL
             );
             """)
 
-            # 5. Tabela de Fila Persistente de Sincronização com Xano
+            # 5. Tabela de Fila Persistente de Sincronização com Xano e rastreamento de erro
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS fila_sincronizacao (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 metodo TEXT NOT NULL,
                 rota TEXT NOT NULL,
                 payload_json TEXT,
-                status TEXT DEFAULT 'PENDENTE',
-                tentativas INTEGER DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'PENDENTE' CHECK(status IN ('PENDENTE', 'ENVIADO', 'ERRO')),
+                tentativas INTEGER NOT NULL DEFAULT 0,
+                ultimo_erro TEXT,
                 criado_em TEXT NOT NULL,
                 processado_em TEXT
             );
             """)
+
+            # Atualização incremental de schema caso a coluna ultimo_erro não exista
+            cursor.execute("PRAGMA table_info(fila_sincronizacao);")
+            colunas_fila = [c["name"] for c in cursor.fetchall()]
+            if "ultimo_erro" not in colunas_fila:
+                cursor.execute("ALTER TABLE fila_sincronizacao ADD COLUMN ultimo_erro TEXT;")
+
+            # 6. Índices de Alta Performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos(codigo_pdv);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_itens_comanda_cid ON itens_comanda(comanda_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_fila_status ON fila_sincronizacao(status);")
 
             # Migração automática de dados legados do churras_data.json se o banco estiver vazio
             cursor.execute("SELECT COUNT(*) as total FROM produtos;")
@@ -159,12 +188,13 @@ def init_db():
                         ))
 
                     conn.commit()
-                except Exception:
-                    pass
+                    logger.info("Migração legada concluída com sucesso no SQLite.")
+                except Exception as e:
+                    logger.error(f"Erro na migração legada: {e}")
 
 init_db()
 
-# ================= WORKER PERSISTENTE DE SINCRONIZAÇÃO XANO =================
+# ================= WORKER PERSISTENTE DE SINCRONIZAÇÃO XANO COM COOLDOWN ADAPTATIVO =================
 
 def _enqueue_xano(metodo: str, rota: str, payload: dict = None):
     """Enfileira ação na tabela persistente de sincronização do SQLite sem travar a interface."""
@@ -176,11 +206,12 @@ def _enqueue_xano(metodo: str, rota: str, payload: dict = None):
                 VALUES (?, ?, ?, 'PENDENTE', 0, ?)
                 """, (metodo, rota, json.dumps(payload or {}, ensure_ascii=False), datetime.now().isoformat()))
                 conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Falha ao enfileirar tarefa no SQLite para o Xano: {e}")
 
 def _xano_sqlite_worker():
-    """Worker em background que processa a fila gravada no SQLite com rate limit de 2.5s."""
+    """Worker em background com Cooldown Adaptativo para eliminar lag sem violar Rate Limit."""
+    global _last_xano_call_time
     while True:
         try:
             tarefa = None
@@ -205,27 +236,45 @@ def _xano_sqlite_worker():
                         }
 
             if not tarefa:
-                time.sleep(1.5)
+                time.sleep(1.0)
                 continue
+
+            # COOLDOWN ADAPTATIVO: Se o sistema estava ocioso (> 2.5s), dispara imediatamente (0s de espera)!
+            # Se houve chamada recente, aguarda apenas a fração restante para completar 2.5s.
+            agora = time.time()
+            tempo_decorrido = agora - _last_xano_call_time
+            if tempo_decorrido < RATE_LIMIT_COOLDOWN:
+                tempo_espera = RATE_LIMIT_COOLDOWN - tempo_decorrido
+                time.sleep(tempo_espera)
 
             tarefa_id = tarefa["id"]
             url = f"{XANO_BASE_URL.rstrip('/')}/{tarefa['rota'].lstrip('/')}"
             sucesso = False
+            detalhe_erro = None
+
+            headers = {"Content-Type": "application/json"}
+            if XANO_API_KEY:
+                headers["Authorization"] = f"Bearer {XANO_API_KEY}"
 
             try:
-                with httpx.Client(timeout=10.0) as client:
-                    resp = client.request(tarefa["metodo"], url, json=tarefa["payload"])
+                with httpx.Client(timeout=8.0) as client:
+                    resp = client.request(tarefa["metodo"], url, json=tarefa["payload"], headers=headers)
                     if resp.status_code in (200, 201, 204):
                         sucesso = True
-            except Exception:
+                    else:
+                        detalhe_erro = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            except Exception as ex:
                 sucesso = False
+                detalhe_erro = str(ex)
+
+            _last_xano_call_time = time.time()
 
             with _db_lock:
                 with get_connection() as conn:
                     if sucesso:
                         conn.execute("""
                         UPDATE fila_sincronizacao
-                        SET status = 'ENVIADO', processado_em = ?
+                        SET status = 'ENVIADO', processado_em = ?, ultimo_erro = NULL
                         WHERE id = ?
                         """, (datetime.now().isoformat(), tarefa_id))
                     else:
@@ -233,15 +282,13 @@ def _xano_sqlite_worker():
                         novo_status = "ERRO" if novas_tentativas >= 5 else "PENDENTE"
                         conn.execute("""
                         UPDATE fila_sincronizacao
-                        SET tentativas = ?, status = ?, processado_em = ?
+                        SET tentativas = ?, status = ?, ultimo_erro = ?, processado_em = ?
                         WHERE id = ?
-                        """, (novas_tentativas, novo_status, datetime.now().isoformat(), tarefa_id))
+                        """, (novas_tentativas, novo_status, detalhe_erro, datetime.now().isoformat(), tarefa_id))
                     conn.commit()
 
-            # Respeita o rate limit do Xano Free Tier (intervalo seguro entre chamadas)
-            time.sleep(2.5)
-
-        except Exception:
+        except Exception as e:
+            logger.error(f"Erro no loop do worker Xano: {e}")
             time.sleep(2.0)
 
 if "_worker_thread" not in globals() or not _worker_thread.is_alive():
@@ -293,7 +340,12 @@ def listar_mesas() -> List[dict]:
             return resultado
 
 def abrir_mesa(numero_mesa: int, qtd_pessoas: int = 1) -> dict:
-    """Abre uma nova mesa e comanda no salão em transação atômica."""
+    """Abre uma nova mesa e comanda no salão com validação estrita de cardinalidade."""
+    if qtd_pessoas <= 0:
+        raise ValueError("A capacidade deve ser de no mínimo 1 pessoa.")
+    if numero_mesa <= 0:
+        raise ValueError("O número da mesa deve ser um valor positivo.")
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -395,7 +447,12 @@ def obter_comanda_detalhes(comanda_id: int) -> Optional[dict]:
             }
 
 def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1, observacao: str = ""):
-    """Lança item na comanda com atualização otimista imediata e enfileiramento Xano."""
+    """Lança item na comanda com validação de quantidade, sanitização contra XSS e enfileiramento Xano."""
+    if quantidade <= 0:
+        raise ValueError("A quantidade deve ser de no mínimo 1 item.")
+
+    obs_sanitizada = html.escape(observacao.strip()) if observacao else ""
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -416,7 +473,7 @@ def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1
                 UPDATE itens_comanda 
                 SET quantidade = ?, observacao = COALESCE(NULLIF(?, ''), observacao)
                 WHERE id = ?
-                """, (nova_qtd, observacao or "", item_existente["id"]))
+                """, (nova_qtd, obs_sanitizada or "", item_existente["id"]))
             else:
                 cursor.execute("""
                 INSERT INTO itens_comanda (comanda_id, produto_id, nome_produto_historico, categoria_historico, quantidade, preco_momento, observacao)
@@ -428,7 +485,7 @@ def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1
                     produto["categoria"],
                     quantidade,
                     float(produto["preco_unitario"]),
-                    observacao or ""
+                    obs_sanitizada or ""
                 ))
             conn.commit()
 
@@ -436,11 +493,18 @@ def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1
     _enqueue_xano("POST", f"/comandas/{comanda_id}/itens", {
         "produto_query": produto["nome"],
         "quantidade": quantidade,
-        "observacao": observacao or ""
+        "observacao": obs_sanitizada or ""
     })
 
 def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, observacao: str = ""):
-    """Edita quantidade, preço e observação de item já lançado."""
+    """Edita quantidade, preço e observação com validações de integridade e sanitização."""
+    if quantidade <= 0:
+        raise ValueError("A quantidade deve ser de no mínimo 1 item.")
+    if preco_momento < 0:
+        raise ValueError("O preço não pode ser negativo.")
+
+    obs_sanitizada = html.escape(observacao.strip()) if observacao else ""
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -448,7 +512,7 @@ def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, obs
             UPDATE itens_comanda
             SET quantidade = ?, preco_momento = ?, observacao = ?
             WHERE id = ?
-            """, (quantidade, preco_momento, observacao or "", item_id))
+            """, (quantidade, preco_momento, obs_sanitizada or "", item_id))
             if cursor.rowcount == 0:
                 raise ValueError("Item não encontrado.")
             conn.commit()
@@ -456,7 +520,7 @@ def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, obs
     _enqueue_xano("PATCH", f"/itens_comanda/{item_id}", {
         "quantidade": quantidade,
         "preco_momento": preco_momento,
-        "observacao": observacao or ""
+        "observacao": obs_sanitizada or ""
     })
 
 def remover_item_comanda(item_id: int):
@@ -471,6 +535,9 @@ def remover_item_comanda(item_id: int):
 
 def fechar_comanda(comanda_id: int, valor_final: float, taxa_servico: bool = True):
     """Finaliza a comanda, libera a mesa física no SQLite e despacha evento crítico ao Xano."""
+    if valor_final < 0:
+        raise ValueError("O valor final da comanda não pode ser negativo.")
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -499,7 +566,7 @@ def fechar_comanda(comanda_id: int, valor_final: float, taxa_servico: bool = Tru
 # ================= OPERAÇÕES DE PRODUTOS =================
 
 def listar_produtos(busca: Optional[str] = None) -> List[dict]:
-    """Lista os produtos do cardápio com suporte a busca textual case-insensitive."""
+    """Lista os produtos do cardápio com suporte a busca textual case-insensitive acelerada por índice."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -521,8 +588,16 @@ def listar_produtos(busca: Optional[str] = None) -> List[dict]:
             return [dict(r) for r in rows]
 
 def criar_produto(codigo_pdv: str, nome: str, categoria: str, preco_unitario: float) -> dict:
-    """Cadastra um novo produto garantindo unicidade do código PDV."""
+    """Cadastra produto validando preço estritamente positivo e sanitizando entradas contra XSS."""
     cod = str(codigo_pdv).strip()
+    if not cod:
+        raise ValueError("Código PDV não pode ser vazio.")
+    if preco_unitario <= 0:
+        raise ValueError("O preço unitário deve ser estritamente positivo (maior que zero).")
+
+    nome_sanitizado = html.escape(nome.strip())
+    cat_sanitizada = html.escape(categoria.strip())
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -533,21 +608,29 @@ def criar_produto(codigo_pdv: str, nome: str, categoria: str, preco_unitario: fl
             cursor.execute("""
             INSERT INTO produtos (codigo_pdv, nome, categoria, preco_unitario)
             VALUES (?, ?, ?, ?)
-            """, (cod, nome.strip(), categoria.strip(), float(preco_unitario)))
+            """, (cod, nome_sanitizado, cat_sanitizada, float(preco_unitario)))
             novo_id = cursor.lastrowid
             conn.commit()
 
             return {
                 "id": novo_id,
                 "codigo_pdv": cod,
-                "nome": nome.strip(),
-                "categoria": categoria.strip(),
+                "nome": nome_sanitizado,
+                "categoria": cat_sanitizada,
                 "preco_unitario": float(preco_unitario)
             }
 
 def atualizar_produto(produto_id: int, codigo_pdv: str, nome: str, categoria: str, preco_unitario: float):
-    """Atualiza dados cadastrais de um produto."""
+    """Atualiza produto validando unicidade de código PDV, preço positivo e sanitizando entradas."""
     cod = str(codigo_pdv).strip()
+    if not cod:
+        raise ValueError("Código PDV não pode ser vazio.")
+    if preco_unitario <= 0:
+        raise ValueError("O preço unitário deve ser estritamente positivo (maior que zero).")
+
+    nome_sanitizado = html.escape(nome.strip())
+    cat_sanitizada = html.escape(categoria.strip())
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -559,7 +642,7 @@ def atualizar_produto(produto_id: int, codigo_pdv: str, nome: str, categoria: st
             UPDATE produtos
             SET codigo_pdv = ?, nome = ?, categoria = ?, preco_unitario = ?
             WHERE id = ?
-            """, (cod, nome.strip(), categoria.strip(), float(preco_unitario), produto_id))
+            """, (cod, nome_sanitizado, cat_sanitizada, float(preco_unitario), produto_id))
             if cursor.rowcount == 0:
                 raise ValueError("Produto não encontrado.")
             conn.commit()

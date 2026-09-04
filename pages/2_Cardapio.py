@@ -121,7 +121,8 @@ else:
                                 st.rerun()
 
                         st.divider()
-                        if st.button("🗑️ Excluir Produto", key=f"del_p_{p['id']}", use_container_width=True):
+                        confirma_del = st.checkbox("Confirmar exclusão deste produto", key=f"chk_del_{p['id']}")
+                        if st.button("🗑️ Excluir Produto", key=f"del_p_{p['id']}", disabled=not confirma_del, use_container_width=True):
                             data_manager.excluir_produto(p["id"])
                             st.rerun()
                 st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)

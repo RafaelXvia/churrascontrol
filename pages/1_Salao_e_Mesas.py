@@ -302,11 +302,15 @@ with col_comanda:
                     st.success("✓ Comanda encerrada e mesa liberada!")
                     st.rerun()
             with c_fc2:
-                if st.button("❌ Cancelar Comanda", use_container_width=True):
-                    data_manager.cancelar_comanda(sel_id)
-                    st.session_state["mesa_selecionada"] = None
-                    st.query_params.clear()
-                    st.rerun()
+                with st.popover("❌ Cancelar Comanda", use_container_width=True):
+                    st.caption("⚠️ Operação Crítica")
+                    st.write("Esta ação cancelará todos os lançamentos e liberará a mesa física.")
+                    confirmar_cancel = st.checkbox("Confirmar cancelamento", key=f"chk_canc_{sel_id}")
+                    if st.button("Executar Cancelamento", type="secondary", disabled=not confirmar_cancel, use_container_width=True):
+                        data_manager.cancelar_comanda(sel_id)
+                        st.session_state["mesa_selecionada"] = None
+                        st.query_params.clear()
+                        st.rerun()
 
 # Rodapé Executivo
 ui_components.render_footer()
