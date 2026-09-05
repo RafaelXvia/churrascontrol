@@ -50,6 +50,22 @@ def run_tests():
         print(f"  [PASS] DataManager: {len(mesas)} mesas ativas, {len(produtos)} produtos carregados")
         print(f"  [PASS] DataManager Dashboard: Faturamento total R$ {dash['resumo']['faturamento_total']:.2f}")
         print(f"  [PASS] DataManager PDF: Gerado com sucesso ({len(pdf)} bytes)")
+
+        # Validação do cadastro completo do Cardápio Delivery
+        p_test = data_manager.criar_produto(
+            codigo_pdv="8888",
+            nome="Picanha Teste Smokehouse",
+            categoria="Carnes",
+            preco_unitario=69.90,
+            descricao="Corte nobre com brasa forte.",
+            url_imagem="https://images.unsplash.com/photo-1558030006-450675393462",
+            qtd_disp=10,
+            precisa_produzir=True,
+            disponivel=True
+        )
+        assert p_test["qtd_disp"] == 10
+        data_manager.excluir_produto(p_test["id"])
+        print("  [PASS] DataManager Cardapio Delivery: Cadastro completo validado com sucesso.")
     except Exception as e:
         print(f"  [FAIL] Erro no DataManager: {e}")
         erros.append(f"DataManager: {e}")

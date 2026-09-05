@@ -130,11 +130,107 @@ def init_db():
             if "ultimo_erro" not in colunas_fila:
                 cursor.execute("ALTER TABLE fila_sincronizacao ADD COLUMN ultimo_erro TEXT;")
 
-            # 6. Índices de Alta Performance
+            # 6. Atualização incremental de schema da tabela de PRODUTOS (paridade total com tabela Xano)
+            cursor.execute("PRAGMA table_info(produtos);")
+            colunas_produtos = [c["name"] for c in cursor.fetchall()]
+            if "descricao" not in colunas_produtos:
+                cursor.execute("ALTER TABLE produtos ADD COLUMN descricao TEXT DEFAULT '';")
+            if "url_imagem" not in colunas_produtos:
+                cursor.execute("ALTER TABLE produtos ADD COLUMN url_imagem TEXT DEFAULT '';")
+            if "qtd_disp" not in colunas_produtos:
+                cursor.execute("ALTER TABLE produtos ADD COLUMN qtd_disp INTEGER DEFAULT 15;")
+            if "precisa_produzir" not in colunas_produtos:
+                cursor.execute("ALTER TABLE produtos ADD COLUMN precisa_produzir INTEGER DEFAULT 1;")
+            if "disponivel" not in colunas_produtos:
+                cursor.execute("ALTER TABLE produtos ADD COLUMN disponivel INTEGER DEFAULT 1;")
+
+            # 7. Índices de Alta Performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos(codigo_pdv);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_produtos_categoria ON produtos(categoria);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_itens_comanda_cid ON itens_comanda(comanda_id);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_fila_status ON fila_sincronizacao(status);")
+
+            # Enriquecimento automático de fotos e descrições para produtos existentes sem foto
+            _fotos_padrao = {
+                "Tutu à Mineira": (
+                    "Tradicional feijão batido mineiro com farinha de mandioca, servido com ovos fritos, couve fininha refogada no alho e torresmo pururuca estalando.",
+                    "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 20, 1
+                ),
+                "Frango com Quiabo": (
+                    "Galinha caipira ensopada em fogo lento com quiabo verde sem baba, molho dourado aromático com cheiro-verde e arroz branco soltinho.",
+                    "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 15, 1
+                ),
+                "Feijoada Mineira": (
+                    "Feijoada completa com carnes nobres curadas e defumadas (costelinha, lombo, paio e calabresa). Acompanha couve, farofa e laranja fresca.",
+                    "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 25, 1
+                ),
+                "Vaca Atolada": (
+                    "Costela bovina de primeira desmanchando na panela com mandioca cozida amanteigada, cheiro-verde fresco e pimenta biquinho.",
+                    "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 18, 1
+                ),
+                "Tropeiro": (
+                    "Feijão tropeiro clássico dos tropeiros mineiros, com farinha de milho crocante, bacon defumado, calabresa, ovos e couve rasgada.",
+                    "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 30, 1
+                ),
+                "Carne de Panela": (
+                    "Cortes nobres bovinos cozidos lentamente em caldo encorpado de legumes com batatas douradas e folhas de louro selecionadas.",
+                    "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+                    "Comida", 16, 1
+                ),
+                "Picanha": (
+                    "Corte nobre de picanha com capa de gordura perfeita, grelhada na parrilla ao ponto desejado, selada com flor de sal e servida fatiada.",
+                    "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80",
+                    "Carnes", 22, 1
+                ),
+                "Costela": (
+                    "Costela bovina de ripa assada lentamente no bafo por 8 horas, soltando do osso com facilidade, acompanhada de molho chimichurri rústico.",
+                    "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&auto=format&fit=crop&q=80",
+                    "Carnes", 14, 1
+                ),
+                "Cerveja": (
+                    "Cerveja puro malte gelada em temperatura estritamente ideal, garrafa servida trincando com colarinho cremoso.",
+                    "https://images.unsplash.com/photo-1608270586620-248524c67de9?w=600&auto=format&fit=crop&q=80",
+                    "Bebidas", 50, 0
+                ),
+                "Suco": (
+                    "Suco natural da fruta preparado na hora, refrescante, servido com bastante gelo e opcional de hortelã fresca.",
+                    "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&auto=format&fit=crop&q=80",
+                    "Bebidas", 40, 0
+                ),
+                "Pudim": (
+                    "Pudim de leite condensado artesanal com textura aveludada sem furinhos, banhado em calda de caramelo dourada e brilhante.",
+                    "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80",
+                    "Sobremesas", 15, 0
+                )
+            }
+            for nome_key, (desc, url, cat, qtd, precisa_prod) in _fotos_padrao.items():
+                cursor.execute("""
+                UPDATE produtos 
+                SET descricao = CASE WHEN (descricao IS NULL OR descricao = '') THEN ? ELSE descricao END,
+                    url_imagem = CASE WHEN (url_imagem IS NULL OR url_imagem = '') THEN ? ELSE url_imagem END,
+                    qtd_disp = CASE WHEN (qtd_disp IS NULL OR qtd_disp = 0) THEN ? ELSE qtd_disp END,
+                    precisa_produzir = CASE WHEN precisa_produzir IS NULL THEN ? ELSE precisa_produzir END,
+                    disponivel = 1
+                WHERE nome LIKE ?;
+                """, (desc, url, qtd, precisa_prod, f"%{nome_key}%"))
+
+            # Imagem e descrição genérica de alta qualidade para produtos que restarem vazios
+            cursor.execute("""
+            UPDATE produtos
+            SET url_imagem = 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'
+            WHERE url_imagem IS NULL OR url_imagem = '';
+            """)
+            cursor.execute("""
+            UPDATE produtos
+            SET descricao = 'Prato especial preparado com ingredientes selecionados, tempero autêntico da casa e finalização primorosa.'
+            WHERE descricao IS NULL OR descricao = '';
+            """)
 
             # Migração automática de dados legados do churras_data.json se o banco estiver vazio
             cursor.execute("SELECT COUNT(*) as total FROM produtos;")
@@ -565,38 +661,61 @@ def fechar_comanda(comanda_id: int, valor_final: float, taxa_servico: bool = Tru
 
 # ================= OPERAÇÕES DE PRODUTOS =================
 
-def listar_produtos(busca: Optional[str] = None) -> List[dict]:
-    """Lista os produtos do cardápio com suporte a busca textual case-insensitive acelerada por índice."""
+def listar_produtos(busca: Optional[str] = None, categoria: Optional[str] = None, apenas_disponiveis: bool = False) -> List[dict]:
+    """Lista os produtos do cardápio com suporte a busca textual, filtro de categoria, status e todos os metadados."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
+            query = """
+            SELECT id, codigo_pdv, nome, categoria, preco_unitario,
+                   COALESCE(descricao, '') as descricao,
+                   COALESCE(url_imagem, '') as url_imagem,
+                   COALESCE(qtd_disp, 0) as qtd_disp,
+                   COALESCE(precisa_produzir, 1) as precisa_produzir,
+                   COALESCE(disponivel, 1) as disponivel
+            FROM produtos
+            WHERE 1=1
+            """
+            params = []
             if busca:
                 termo = f"%{busca.strip()}%"
-                cursor.execute("""
-                SELECT id, codigo_pdv, nome, categoria, preco_unitario
-                FROM produtos
-                WHERE codigo_pdv LIKE ? OR nome LIKE ? OR categoria LIKE ?
-                ORDER BY CAST(codigo_pdv AS INTEGER) ASC, nome ASC
-                """, (termo, termo, termo))
-            else:
-                cursor.execute("""
-                SELECT id, codigo_pdv, nome, categoria, preco_unitario
-                FROM produtos
-                ORDER BY CAST(codigo_pdv AS INTEGER) ASC, nome ASC
-                """)
+                query += " AND (codigo_pdv LIKE ? OR nome LIKE ? OR categoria LIKE ? OR descricao LIKE ?)"
+                params.extend([termo, termo, termo, termo])
+            if categoria and categoria != "Todas":
+                query += " AND categoria = ?"
+                params.append(categoria)
+            if apenas_disponiveis:
+                query += " AND disponivel = 1"
+
+            query += " ORDER BY categoria ASC, CAST(codigo_pdv AS INTEGER) ASC, nome ASC"
+            cursor.execute(query, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
-def criar_produto(codigo_pdv: str, nome: str, categoria: str, preco_unitario: float) -> dict:
-    """Cadastra produto validando preço estritamente positivo e sanitizando entradas contra XSS."""
+def criar_produto(
+    codigo_pdv: str,
+    nome: str,
+    categoria: str,
+    preco_unitario: float,
+    descricao: str = "",
+    url_imagem: str = "",
+    qtd_disp: int = 15,
+    precisa_produzir: bool = True,
+    disponivel: bool = True
+) -> dict:
+    """Cadastra produto validando preço estritamente positivo, estoque não negativo e sanitizando entradas contra XSS."""
     cod = str(codigo_pdv).strip()
     if not cod:
         raise ValueError("Código PDV não pode ser vazio.")
     if preco_unitario <= 0:
         raise ValueError("O preço unitário deve ser estritamente positivo (maior que zero).")
+    if qtd_disp < 0:
+        raise ValueError("A quantidade disponível em estoque não pode ser negativa.")
 
     nome_sanitizado = html.escape(nome.strip())
     cat_sanitizada = html.escape(categoria.strip())
+    desc_sanitizada = html.escape(descricao.strip()) if descricao else ""
+    url_sanitizada = url_imagem.strip() if url_imagem else ""
 
     with _db_lock:
         with get_connection() as conn:
@@ -606,30 +725,77 @@ def criar_produto(codigo_pdv: str, nome: str, categoria: str, preco_unitario: fl
                 raise ValueError(f"Código PDV '{cod}' já cadastrado no sistema.")
 
             cursor.execute("""
-            INSERT INTO produtos (codigo_pdv, nome, categoria, preco_unitario)
-            VALUES (?, ?, ?, ?)
-            """, (cod, nome_sanitizado, cat_sanitizada, float(preco_unitario)))
+            INSERT INTO produtos (
+                codigo_pdv, nome, categoria, preco_unitario,
+                descricao, url_imagem, qtd_disp, precisa_produzir, disponivel
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                cod,
+                nome_sanitizado,
+                cat_sanitizada,
+                float(preco_unitario),
+                desc_sanitizada,
+                url_sanitizada,
+                int(qtd_disp),
+                1 if precisa_produzir else 0,
+                1 if disponivel else 0
+            ))
             novo_id = cursor.lastrowid
             conn.commit()
 
-            return {
+            prod_dict = {
                 "id": novo_id,
                 "codigo_pdv": cod,
                 "nome": nome_sanitizado,
                 "categoria": cat_sanitizada,
-                "preco_unitario": float(preco_unitario)
+                "preco_unitario": float(preco_unitario),
+                "descricao": desc_sanitizada,
+                "url_imagem": url_sanitizada,
+                "qtd_disp": int(qtd_disp),
+                "precisa_produzir": 1 if precisa_produzir else 0,
+                "disponivel": 1 if disponivel else 0
             }
 
-def atualizar_produto(produto_id: int, codigo_pdv: str, nome: str, categoria: str, preco_unitario: float):
-    """Atualiza produto validando unicidade de código PDV, preço positivo e sanitizando entradas."""
+    _enqueue_xano("POST", "/produto", {
+        "codigo_pdv": cod,
+        "nome": nome_sanitizado,
+        "categoria": cat_sanitizada,
+        "preco": float(preco_unitario),
+        "descricao": desc_sanitizada,
+        "url_imagem": url_sanitizada,
+        "qtd_disp": int(qtd_disp),
+        "precisa_produzir": bool(precisa_produzir),
+        "disponivel": bool(disponivel)
+    })
+
+    return prod_dict
+
+def atualizar_produto(
+    produto_id: int,
+    codigo_pdv: str,
+    nome: str,
+    categoria: str,
+    preco_unitario: float,
+    descricao: str = "",
+    url_imagem: str = "",
+    qtd_disp: int = 15,
+    precisa_produzir: bool = True,
+    disponivel: bool = True
+):
+    """Atualiza dados cadastrais e operacionais de um produto."""
     cod = str(codigo_pdv).strip()
     if not cod:
         raise ValueError("Código PDV não pode ser vazio.")
     if preco_unitario <= 0:
         raise ValueError("O preço unitário deve ser estritamente positivo (maior que zero).")
+    if qtd_disp < 0:
+        raise ValueError("A quantidade disponível não pode ser negativa.")
 
     nome_sanitizado = html.escape(nome.strip())
     cat_sanitizada = html.escape(categoria.strip())
+    desc_sanitizada = html.escape(descricao.strip()) if descricao else ""
+    url_sanitizada = url_imagem.strip() if url_imagem else ""
 
     with _db_lock:
         with get_connection() as conn:
@@ -640,20 +806,46 @@ def atualizar_produto(produto_id: int, codigo_pdv: str, nome: str, categoria: st
 
             cursor.execute("""
             UPDATE produtos
-            SET codigo_pdv = ?, nome = ?, categoria = ?, preco_unitario = ?
+            SET codigo_pdv = ?, nome = ?, categoria = ?, preco_unitario = ?,
+                descricao = ?, url_imagem = ?, qtd_disp = ?, precisa_produzir = ?, disponivel = ?
             WHERE id = ?
-            """, (cod, nome_sanitizado, cat_sanitizada, float(preco_unitario), produto_id))
+            """, (
+                cod,
+                nome_sanitizado,
+                cat_sanitizada,
+                float(preco_unitario),
+                desc_sanitizada,
+                url_sanitizada,
+                int(qtd_disp),
+                1 if precisa_produzir else 0,
+                1 if disponivel else 0,
+                produto_id
+            ))
             if cursor.rowcount == 0:
                 raise ValueError("Produto não encontrado.")
             conn.commit()
 
+    _enqueue_xano("PATCH", f"/produto/{produto_id}", {
+        "codigo_pdv": cod,
+        "nome": nome_sanitizado,
+        "categoria": cat_sanitizada,
+        "preco": float(preco_unitario),
+        "descricao": desc_sanitizada,
+        "url_imagem": url_sanitizada,
+        "qtd_disp": int(qtd_disp),
+        "precisa_produzir": bool(precisa_produzir),
+        "disponivel": bool(disponivel)
+    })
+
 def excluir_produto(produto_id: int):
-    """Exclui produto do cardápio."""
+    """Exclui produto do cardápio e agenda sincronização no Xano."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM produtos WHERE id = ?", (produto_id,))
             conn.commit()
+
+    _enqueue_xano("DELETE", f"/produto/{produto_id}")
 
 # ================= RELATÓRIOS E PDF =================
 
