@@ -27,6 +27,7 @@ Restaurantes de pequeno e médio porte sofrem com perda de histórico de lançam
   - *Restrição*: Streamlit será utilizado como tecnologia exclusiva para implementação do frontend da aplicação.
 - **Infraestrutura**: Docker Compose (PostgreSQL 16) e suporte a deploy na plataforma Discloud.
 - **Nuvem & Integração**: Xano Backend API com sincronização assíncrona por fila (`asyncio.Queue` / persistência SQLite).
+- **Ferramentas de IA & MCP**: Xano Developer MCP (`@xano/developer-mcp`) integrado via `.vscode/mcp.json` e `.gemini/settings.json` para consulta e validação de XanoScript.
 
 ## 7. Diretrizes de Organização do Workspace
 - **Código da Aplicação**: Fica restrito e concentrado dentro da pasta `crudfaculdade/`.

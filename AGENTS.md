@@ -18,7 +18,12 @@
 - Todas as regras de negócio e validações (ex: validação de mesas ativas, unicidade de código PDV, fechamento de comandas) devem ser validadas no backend, tratando o frontend apenas como camada visual.
 - Rate limits para integrações de terceiros (como o Xano Free Tier) devem ser respeitados via worker desacoplado.
 
-## 4. Ciclo de Trabalho OpenSpec
+## 4. Integração com Xano Developer MCP
+- O projeto possui o **Xano Developer MCP** configurado em `.vscode/mcp.json` e `.gemini/settings.json`.
+- Os agentes de IA devem utilizar este MCP para validar arquivos XanoScript (`.xs`), consultar documentação da Meta API / Run API e garantir paridade estrita com o backend Xano antes de sugerir comandos de `xano workspace push`.
+- Consulte `docs/mcp-xano.md` para instruções detalhadas.
+
+## 5. Ciclo de Trabalho OpenSpec
 1. **Explore**: Investigue impactos, riscos e dependências.
 2. **Propose**: Crie artefatos (`proposal.md`, `specs/`, `design.md`, `tasks.md`).
 3. **Review**: Valide escopo e viabilidade técnica antes de gerar código.
