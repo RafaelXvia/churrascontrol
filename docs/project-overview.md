@@ -26,4 +26,9 @@ Restaurantes de pequeno e médio porte sofrem com perda de histórico de lançam
 - **Frontend**: Streamlit.
   - *Restrição*: Streamlit será utilizado como tecnologia exclusiva para implementação do frontend da aplicação.
 - **Infraestrutura**: Docker Compose (PostgreSQL 16) e suporte a deploy na plataforma Discloud.
-- **Nuvem & Integração**: Xano Backend API com sincronização assíncrona por fila (`asyncio.Queue`).
+- **Nuvem & Integração**: Xano Backend API com sincronização assíncrona por fila (`asyncio.Queue` / persistência SQLite).
+
+## 7. Diretrizes de Organização do Workspace
+- **Código da Aplicação**: Fica restrito e concentrado dentro da pasta `crudfaculdade/`.
+- **Material do Professor (`material do professor/`)**: Pasta externa dedicada estritamente à consulta pedagógica, manuais e documentações conceituais (somente leitura).
+- **Pasta Discloud (`discloud/` na raiz)**: Reservada para backups de segurança gerenciados pelo usuário. Nunca deve ser apagada ou manipulada por agentes automatizados.

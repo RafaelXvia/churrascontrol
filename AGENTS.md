@@ -1,6 +1,10 @@
 # Diretrizes para Agentes de IA — ChurrasControl
 
-## 1. Princípio Fundamental
+## 1. Princípio Fundamental & Isolamento Estrito de Diretórios
+- **ESCOPO EXCLUSIVO DE MODIFICAÇÃO**: Todo o código, configurações, migrações e testes do projeto residem **EXCLUSIVAMENTE** dentro da pasta `crudfaculdade/`.
+- **PROIBIDO ALTERAR PASTAS EXTERNAS**:
+  - `material do professor/`: Diretório de **apenas leitura e consulta técnica**. Nunca criar, modificar, mover ou apagar nenhum arquivo nele.
+  - `discloud/` (na raiz do workspace): Diretório **reservado para backups manuais do usuário**. Jamais mexer, alterar ou apagar.
 - Nenhuma alteração significativa de funcionalidade ou arquitetura deve ser executada sem prévio planejamento via OpenSpec (`spec-driven`).
 - Consulte sempre `docs/project-overview.md` e `docs/domain-model.md` antes de implementar novas features.
 
