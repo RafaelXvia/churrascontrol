@@ -52,13 +52,15 @@ def run_tests():
         print(f"  [PASS] DataManager PDF: Gerado com sucesso ({len(pdf)} bytes)")
 
         # Validação do cadastro completo do Cardápio Delivery
+        import time
+        cod_teste = f"T{int(time.time()) % 100000}"
         p_test = data_manager.criar_produto(
-            codigo_pdv="8888",
+            codigo_pdv=cod_teste,
             nome="Picanha Teste Smokehouse",
             categoria="Carnes",
             preco_unitario=69.90,
             descricao="Corte nobre com brasa forte.",
-            url_imagem="https://images.unsplash.com/photo-1558030006-450675393462",
+            url_imagem="https://i.imgur.com/f8OmDlH.jpeg",
             qtd_disp=10,
             precisa_produzir=True,
             disponivel=True

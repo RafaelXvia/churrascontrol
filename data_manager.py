@@ -847,6 +847,71 @@ def excluir_produto(produto_id: int):
 
     _enqueue_xano("DELETE", f"/produto/{produto_id}")
 
+def sincronizar_produtos_xano() -> int:
+    """
+    Sincroniza o catálogo local do SQLite puxando os dados reais diretamente da tabela PRODUTO do Xano,
+    incluindo URLs reais de fotos (Imgur), descrições completas, estoque e preços.
+    """
+    url = f"{XANO_BASE_URL}/produto"
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(url)
+            if resp.status_code != 200:
+                logger.warning(f"Falha ao consultar produtos no Xano (HTTP {resp.status_code})")
+                return 0
+            prods_xano = resp.json()
+
+        sincronizados = 0
+        with _db_lock:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                for px in prods_xano:
+                    nome = str(px.get("nome") or "").strip()
+                    # Ignorar registros corrompidos de teste ou vazios
+                    if not nome or nome.startswith("&lt;script") or nome.startswith("<script"):
+                        continue
+
+                    cod = str(px.get("codigo_pdv") or px.get("id") or "").strip()
+                    if not cod:
+                        continue
+
+                    desc = str(px.get("descricao") or "").strip()
+                    foto = str(px.get("url_imagem") or "").strip()
+                    preco = float(px.get("preco") or px.get("preco_unitario") or 10.0)
+                    if preco <= 0:
+                        preco = 10.0
+                    categoria = str(px.get("categoria") or "Comida").strip()
+                    qtd = int(px.get("qtd_disp") or 10)
+                    precisa = 1 if px.get("precisa_produzir") else 0
+                    disp = 1 if px.get("disponivel", True) else 0
+
+                    cursor.execute("SELECT id FROM produtos WHERE LOWER(codigo_pdv) = LOWER(?)", (cod,))
+                    row = cursor.fetchone()
+                    if row:
+                        cursor.execute("""
+                        UPDATE produtos
+                        SET nome = ?, categoria = ?, preco_unitario = ?,
+                            descricao = ?, url_imagem = ?, qtd_disp = ?,
+                            precisa_produzir = ?, disponivel = ?
+                        WHERE id = ?
+                        """, (nome, categoria, preco, desc, foto, qtd, precisa, disp, row["id"]))
+                    else:
+                        cursor.execute("""
+                        INSERT INTO produtos (
+                            codigo_pdv, nome, categoria, preco_unitario,
+                            descricao, url_imagem, qtd_disp, precisa_produzir, disponivel
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (cod, nome, categoria, preco, desc, foto, qtd, precisa, disp))
+                    sincronizados += 1
+
+                conn.commit()
+        logger.info(f"Sincronização com Xano concluída: {sincronizados} produtos atualizados com fotos reais.")
+        return sincronizados
+    except Exception as e:
+        logger.warning(f"Erro ao sincronizar com Xano: {e}")
+        return 0
+
 # ================= RELATÓRIOS E PDF =================
 
 def obter_dashboard_dados(periodo: str = "7d") -> dict:

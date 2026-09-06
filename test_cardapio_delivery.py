@@ -1,7 +1,8 @@
-﻿"""
+"""
 Teste Automatizado: Funcionalidade de Cardapio Delivery & Paridade de Schema de Produto
 """
 import sys
+import time
 import data_manager
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -12,9 +13,11 @@ def test_cardapio_delivery():
     print("TESTE: CARDAPIO DELIVERY & SCHEMA COMPLETO DE PRODUTO")
     print("=" * 60)
 
+    test_code = f"T{int(time.time()) % 100000}"
+
     # 1. Cadastro com todos os campos da tabela produto
     p = data_manager.criar_produto(
-        codigo_pdv="7777",
+        codigo_pdv=test_code,
         nome="Ancho Especial Parrilla",
         categoria="Carnes",
         preco_unitario=84.50,
@@ -24,7 +27,7 @@ def test_cardapio_delivery():
         precisa_produzir=True,
         disponivel=True
     )
-    assert p["codigo_pdv"] == "7777"
+    assert p["codigo_pdv"] == test_code
     assert p["descricao"] == "Ojo de bife nobre com marmoreio intenso grelhado na brasa viva."
     assert p["qtd_disp"] == 14
     assert p["precisa_produzir"] == 1
@@ -32,7 +35,7 @@ def test_cardapio_delivery():
     print("  [PASS] Criacao de produto com campos completos OK.")
 
     # 2. Listagem e Filtro por Categoria
-    prods = data_manager.listar_produtos(busca="7777")
+    prods = data_manager.listar_produtos(busca=test_code)
     assert len(prods) == 1
     assert prods[0]["url_imagem"].startswith("https://images.unsplash.com")
     print("  [PASS] Listagem e busca com foto e descricao OK.")
@@ -40,7 +43,7 @@ def test_cardapio_delivery():
     # 3. Atualizacao de Produto com novos atributos
     data_manager.atualizar_produto(
         produto_id=p["id"],
-        codigo_pdv="7777",
+        codigo_pdv=test_code,
         nome="Ancho Especial Parrilla (Atualizado)",
         categoria="Carnes",
         preco_unitario=89.00,
@@ -50,7 +53,7 @@ def test_cardapio_delivery():
         precisa_produzir=False,
         disponivel=False
     )
-    prods_up = data_manager.listar_produtos(busca="7777")
+    prods_up = data_manager.listar_produtos(busca=test_code)
     assert prods_up[0]["nome"] == "Ancho Especial Parrilla (Atualizado)"
     assert prods_up[0]["qtd_disp"] == 5
     assert prods_up[0]["precisa_produzir"] == 0
@@ -59,7 +62,7 @@ def test_cardapio_delivery():
 
     # 4. Limpeza
     data_manager.excluir_produto(p["id"])
-    assert len(data_manager.listar_produtos(busca="7777")) == 0
+    assert len(data_manager.listar_produtos(busca=test_code)) == 0
     print("  [PASS] Exclusao e fila Xano OK.")
 
     print("-" * 60)
