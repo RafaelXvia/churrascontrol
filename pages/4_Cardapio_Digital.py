@@ -1,5 +1,7 @@
+import importlib
 import streamlit as st
 import data_manager
+importlib.reload(data_manager)
 import ui_components
 
 st.set_page_config(
@@ -11,6 +13,68 @@ st.set_page_config(
 
 # Navbar superior unificada
 ui_components.render_navbar(active_tab="cardapio_digital")
+
+# Diálogo Modal Saltado na Tela com Detalhes Completos do Prato
+@st.dialog("🍽️ Detalhes do Prato", width="large")
+def dialog_detalhes_prato(p):
+    img_url = p.get("url_imagem")
+    if not img_url or img_url.strip() == "":
+        img_url = "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80"
+
+    badge_prod = "🔥 Preparado na Brasa Viva" if p.get("precisa_produzir") else "⚡ Servido Imediatamente"
+    disp_status = "🟢 Disponível no Cardápio" if p.get("disponivel", 1) else "🔴 Esgotado Temporariamente"
+
+    st.markdown(f"""
+    <meta name="referrer" content="no-referrer">
+    <div style="border-radius: 14px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.12); background: #0f172a; max-height: 380px;">
+        <img src="{img_url}" referrerpolicy="no-referrer" style="width: 100%; height: 320px; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=800'">
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 10px;">
+        <div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.76rem; color: #f59e0b; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); padding: 3px 8px; border-radius: 6px; font-weight: 700;">
+                    🏷️ {p.get('categoria', 'Geral')}
+                </span>
+                <span style="font-size: 0.76rem; color: #cbd5e1; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; font-weight: 600;">
+                    CÓD #{p.get('codigo_pdv', '')}
+                </span>
+            </div>
+            <h2 style="margin: 0; color: #ffffff; font-size: 1.65rem; font-weight: 800; line-height: 1.2;">
+                {p.get('nome', '')}
+            </h2>
+        </div>
+        <div style="text-align: right; min-width: 130px;">
+            <div style="font-size: 1.75rem; font-weight: 800; color: #fbbf24;">
+                R$ {float(p.get('preco_unitario', 0)):,.2f}
+            </div>
+            <div style="font-size: 0.78rem; color: #94a3b8;">Preço Comercial</div>
+        </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 14px 0;">
+
+    <div style="margin-bottom: 16px;">
+        <h4 style="margin: 0 0 6px 0; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">
+            📖 Descrição Gastronômica
+        </h4>
+        <p style="color: #cbd5e1; font-size: 1.02rem; line-height: 1.6; margin: 0; background: rgba(255,255,255,0.02); padding: 12px 14px; border-radius: 10px; border-left: 3px solid #f59e0b;">
+            {p.get('descricao') or 'Prato preparado artesanalmente com ingredientes de alta qualidade pela equipe do ChurrasControl.'}
+        </p>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;">
+        <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; color: #e2e8f0;">
+            {badge_prod}
+        </span>
+        <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; color: {'#10b981' if p.get('disponivel', 1) else '#ef4444'};">
+            {disp_status}
+        </span>
+        <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; color: #cbd5e1;">
+            📦 Estoque: <strong>{p.get('qtd_disp', 0)} unidades</strong>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
 # CSS exclusivo para o Cardápio Digital (Mobile First, Imgur Safe & Delivery)
 st.markdown("""
@@ -193,12 +257,15 @@ st.markdown("""
 # Barra de Pesquisa e Filtros
 c_sh1, c_sh2 = st.columns([4, 1.2], vertical_alignment="center")
 with c_sh1:
-    busca_cardapio = st.text_input("🔍 O que você deseja pedir hoje?", placeholder="Digite o nome do prato, corte ou bebida (Ex: Picanha, Feijoada, Maracujá)...", label_visibility="collapsed")
+    busca_cardapio = st.text_input("🔍 O que você deseja ver hoje?", placeholder="Digite o nome do prato, corte ou bebida (Ex: Picanha, Feijoada, Maracujá)...", label_visibility="collapsed")
 with c_sh2:
     if st.button("🔄 Sincronizar Xano", help="Puxar últimas fotos e produtos atualizados no Xano", use_container_width=True):
-        qtd_sync = data_manager.sincronizar_produtos_xano()
-        st.success(f"{qtd_sync} produtos sincronizados!")
-        st.rerun()
+        try:
+            qtd_sync = data_manager.sincronizar_produtos_xano()
+            st.toast(f"✓ {qtd_sync} produtos sincronizados do Xano!", icon="✅")
+            st.rerun()
+        except Exception as ex:
+            st.error(f"Erro ao sincronizar com Xano: {ex}")
 
 # Obter produtos cadastrados com fotos reais
 produtos_todos = data_manager.listar_produtos(busca=busca_cardapio)
@@ -221,9 +288,6 @@ if not produtos_filtrados:
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Mesas abertas para permitir lançar pedido direto no salão
-    mesas_ativas = [m for m in data_manager.listar_mesas() if m.get("comanda_ativa_id")]
-
     # Renderização em Grid de 3 Colunas
     cols_per_row = 3
     for i in range(0, len(produtos_filtrados), cols_per_row):
@@ -241,7 +305,7 @@ else:
                 badge_disp = f"⚠️ Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
                 is_indisponivel = (p.get("disponivel", 1) == 0)
 
-                # Card com referrerpolicy='no-referrer' para carregar Imgur perfeitamente sem bloqueios
+                # Card com visual imersivo e fotos reais do Imgur
                 st.markdown(f"""
                 <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
                     <div class="card-img-container">
@@ -266,31 +330,11 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Botão interativo para pedir diretamente para a mesa ou simular pedido
-                with st.popover(f"🍽️ Pedir #{p['codigo_pdv']}", use_container_width=True):
-                    st.markdown(f"**Lançar Pedido: {p['nome']}**")
-                    st.caption(f"Valor Unitário: R$ {float(p['preco_unitario']):,.2f}")
+                # Botão destacado para ver os detalhes completos em modal saltado na tela
+                if st.button("🔍 Ver Detalhes do Prato", key=f"btn_det_dig_{p['id']}", use_container_width=True, help="Clique para visualizar foto ampliada, descrição e informações do prato"):
+                    dialog_detalhes_prato(p)
 
-                    if not mesas_ativas:
-                        st.info("💡 Nenhuma mesa aberta no salão agora. Você pode abrir uma mesa em 'Salão & Mesas' ou simular a seleção.")
-                    else:
-                        opcoes_mesas = {f"Mesa {m['numero_mesa']} (Comanda #{m['comanda_ativa_id']})": m for m in mesas_ativas}
-                        mesa_sel = st.selectbox("Selecione a Mesa de Destino", list(opcoes_mesas.keys()), key=f"sel_m_dig_{p['id']}")
-                        qtd_pedido = st.number_input("Quantidade", min_value=1, max_value=99, value=1, key=f"qtd_m_dig_{p['id']}")
-                        obs_pedido = st.text_input("Observação / Ponto", placeholder="Ex: ao ponto, bem passada, sem gelo", key=f"obs_m_dig_{p['id']}")
-
-                        if st.button("✓ Confirmar Pedido na Mesa", key=f"btn_ped_dig_{p['id']}", type="primary", use_container_width=True):
-                            mesa_obj = opcoes_mesas[mesa_sel]
-                            data_manager.adicionar_item_comanda(
-                                comanda_id=mesa_obj["comanda_ativa_id"],
-                                produto_id=p["id"],
-                                quantidade=int(qtd_pedido),
-                                observacao=obs_pedido
-                            )
-                            st.success(f"✓ {qtd_pedido}x '{p['nome']}' lançado com sucesso na Mesa {mesa_obj['numero_mesa']}!")
-                            st.rerun()
-
-                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
 # Rodapé Executivo
 ui_components.render_footer()

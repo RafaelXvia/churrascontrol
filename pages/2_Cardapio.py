@@ -1,5 +1,7 @@
+import importlib
 import streamlit as st
 import data_manager
+importlib.reload(data_manager)
 import ui_components
 
 st.set_page_config(
@@ -40,43 +42,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Cabeçalho da Página com Botão de Abertura da Tela Separada
-c_title, c_actions = st.columns([3, 2.5], vertical_alignment="center")
-
-with c_title:
-    st.markdown("""
-    <div style="margin-bottom: 0.5rem;">
-        <h2 style="margin: 0; font-size: 1.55rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 10px;">
-            <span>📋</span> Gestão de Cardápio & Catálogo PDV
-        </h2>
-        <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.88rem;">
-            Administração de produtos, códigos PDV, estoque e precificação comercial.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c_actions:
-    c_btn1, c_btn2, c_btn3 = st.columns([2.4, 1.6, 1.4])
-    with c_btn1:
-        # Botão para abrir a tela separada de Cardápio Digital do Cliente
-        if st.button("🍽️ Abrir Cardápio Digital", key="btn_open_cardapio_dig", type="primary", use_container_width=True, help="Abre a tela separada com visual de restaurante / delivery"):
-            st.switch_page("pages/4_Cardapio_Digital.py")
-    with c_btn2:
-        if st.button("🔄 Puxar Xano", key="btn_sync_xano", use_container_width=True, help="Sincroniza fotos reais e dados da tabela PRODUTO do Xano"):
-            qtd = data_manager.sincronizar_produtos_xano()
-            st.success(f"{qtd} produtos sincronizados do Xano!")
-            st.rerun()
-    with c_btn3:
-        with st.popover("📱 QR Code", use_container_width=True):
-            share_url = "http://localhost:8501/Cardapio_Digital"
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data={share_url}"
-            st.image(qr_url, caption="QR Code da Mesa", use_container_width=True)
-            st.code(share_url, language="text")
-
-# Formulário para Cadastro de Novo Produto (Pede TUDO da tabela PRODUTO)
-with st.expander("➕ Cadastrar Novo Produto no Catálogo (Cadastro Completo)", expanded=False):
-    st.caption("Preencha todos os atributos técnicos e comerciais mapeados na tabela **PRODUTO**.")
-    with st.form("form_novo_prod_completo"):
+# Diálogo Modal para Cadastrar Novo Produto
+@st.dialog("➕ Cadastrar Novo Produto no Catálogo", width="large")
+def dialog_novo_produto():
+    st.caption("Preencha todos os atributos técnicos e comerciais da tabela **PRODUTO**.")
+    with st.form("form_modal_novo_prod"):
         c1, c2, c3 = st.columns([1.5, 3, 2])
         with c1:
             cod_pdv = st.text_input("Código PDV *", placeholder="Ex: 109", help="Identificador único rápido no terminal PDV")
@@ -90,19 +60,19 @@ with st.expander("➕ Cadastrar Novo Produto no Catálogo (Cadastro Completo)", 
             preco = st.number_input("Preço de Venda (R$) *", min_value=0.01, value=45.00, step=0.50)
             qtd_disp = st.number_input("Estoque Disponível (qtd_disp)", min_value=0, value=20, step=1, help="Quantidade em estoque para venda")
         with c5:
-            url_imagem = st.text_input("URL da Imagem / Foto do Produto (Imgur)", placeholder="https://i.imgur.com/...", help="Link da foto do prato")
+            url_imagem = st.text_input("URL da Foto do Produto (Imgur)", placeholder="https://i.imgur.com/...", help="Link da foto do prato")
 
         descricao = st.text_area(
-            "Descrição Comercial & Gastronômica",
-            placeholder="Ex: Corte nobre com gordura selecionada, assado na brasa forte com flor de sal e servido com farofa crocante e chimichurri artesanal.",
-            help="Texto apresentado no cardápio digital do cliente e impresso na comanda"
+            "Descrição Gastronômica & Comercial",
+            placeholder="Ex: Corte nobre com gordura selecionada, assado na brasa viva e servido com farofa crocante e chimichurri.",
+            help="Texto apresentado no cardápio digital do cliente"
         )
 
         c_sw1, c_sw2 = st.columns(2)
         with c_sw1:
-            precisa_produzir = st.checkbox("👨‍🍳 Requer Produção / Cozinha (precisa_produzir)", value=True, help="Se marcado, despacha ordem para a grelha/cozinha")
+            precisa_produzir = st.checkbox("👨‍🍳 Requer Produção / Cozinha (precisa_produzir)", value=True)
         with c_sw2:
-            disponivel = st.checkbox("🟢 Disponível para Venda no Cardápio (disponivel)", value=True, help="Desmarque caso o produto esteja temporariamente pausado")
+            disponivel = st.checkbox("🟢 Disponível para Venda no Cardápio (disponivel)", value=True)
 
         btn_salvar = st.form_submit_button("💾 Salvar Produto Completo no Catálogo", type="primary", use_container_width=True)
         if btn_salvar:
@@ -121,12 +91,108 @@ with st.expander("➕ Cadastrar Novo Produto no Catálogo (Cadastro Completo)", 
                         precisa_produzir=precisa_produzir,
                         disponivel=disponivel
                     )
-                    st.success(f"✓ Produto '{nome}' cadastrado com sucesso com todos os atributos!")
+                    st.success(f"✓ Produto '{nome}' cadastrado com sucesso!")
                     st.rerun()
                 except ValueError as err:
                     st.error(str(err))
 
-st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+# Diálogo Modal para Opções e Edição/Exclusão do Produto
+@st.dialog("⚙️ Opções do Produto", width="large")
+def dialog_opcoes_produto(p):
+    st.markdown(f"### Gerenciar: **{p['nome']}**")
+    st.caption(f"Código PDV: **{p['codigo_pdv']}** | ID do Sistema: #{p['id']}")
+
+    tab_edit, tab_del = st.tabs(["✏️ Editar Cadastro", "🗑️ Excluir Produto"])
+
+    with tab_edit:
+        with st.form(f"form_modal_edit_{p['id']}"):
+            c1, c2 = st.columns([1.5, 3])
+            with c1:
+                novo_cod = st.text_input("Código PDV", value=str(p["codigo_pdv"]))
+            with c2:
+                novo_nome = st.text_input("Nome", value=p["nome"])
+
+            c3, c4 = st.columns(2)
+            with c3:
+                cat_opcoes = ["Carnes", "Comida", "Entradas", "Bebidas", "Sobremesas", "Promoção", "Geral"]
+                idx_cat = cat_opcoes.index(p["categoria"]) if p["categoria"] in cat_opcoes else 0
+                nova_cat = st.selectbox("Categoria", cat_opcoes, index=idx_cat)
+                novo_preco = st.number_input("Preço Unitário (R$)", min_value=0.01, value=float(p["preco_unitario"]), step=0.50)
+            with c4:
+                novo_estoque = st.number_input("Estoque (qtd_disp)", min_value=0, value=int(p.get("qtd_disp", 10)))
+                nova_foto = st.text_input("URL da Foto (Imgur)", value=p.get("url_imagem", ""))
+
+            nova_desc = st.text_area("Descrição Gastronômica", value=p.get("descricao", ""))
+
+            c_s1, c_s2 = st.columns(2)
+            with c_s1:
+                novo_prod = st.checkbox("Requer Cozinha (precisa_produzir)", value=bool(p.get("precisa_produzir", 1)))
+            with c_s2:
+                novo_disp = st.checkbox("Disponível no Cardápio (disponivel)", value=bool(p.get("disponivel", 1)))
+
+            if st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True):
+                try:
+                    data_manager.atualizar_produto(
+                        produto_id=p["id"],
+                        codigo_pdv=novo_cod,
+                        nome=novo_nome,
+                        categoria=nova_cat,
+                        preco_unitario=novo_preco,
+                        descricao=nova_desc,
+                        url_imagem=nova_foto,
+                        qtd_disp=int(novo_estoque),
+                        precisa_produzir=novo_prod,
+                        disponivel=novo_disp
+                    )
+                    st.success("Produto atualizado com sucesso!")
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
+
+    with tab_del:
+        st.warning(f"⚠️ Atenção: A exclusão do produto **{p['nome']}** removerá o item do catálogo.")
+        confirma_del = st.checkbox("Confirmo que desejo excluir este produto definitivamente", key=f"dlg_del_chk_{p['id']}")
+        if st.button("🗑️ Excluir Produto Definitivamente", type="primary", disabled=not confirma_del, key=f"dlg_del_btn_{p['id']}", use_container_width=True):
+            data_manager.excluir_produto(p["id"])
+            st.success("Produto excluído com sucesso!")
+            st.rerun()
+
+# Cabeçalho da Página com Botões de Ação
+c_title, c_actions = st.columns([2.8, 3.2], vertical_alignment="center")
+
+with c_title:
+    st.markdown("""
+    <div style="margin-bottom: 0.5rem;">
+        <h2 style="margin: 0; font-size: 1.55rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 10px;">
+            <span>📋</span> Gestão de Cardápio & Catálogo PDV
+        </h2>
+        <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.88rem;">
+            Administração de produtos, códigos PDV, estoque e precificação comercial.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c_actions:
+    c_btn0, c_btn1, c_btn2, c_btn3 = st.columns([2.0, 2.2, 1.4, 1.2])
+    with c_btn0:
+        if st.button("➕ Novo Produto", key="btn_open_novo_prod", type="primary", use_container_width=True, help="Abre o formulário modal na tela para cadastrar produto"):
+            dialog_novo_produto()
+    with c_btn1:
+        if st.button("🍽️ Cardápio Digital", key="btn_open_cardapio_dig", use_container_width=True, help="Abre a tela separada com visual de restaurante / delivery"):
+            st.switch_page("pages/4_Cardapio_Digital.py")
+    with c_btn2:
+        if st.button("🔄 Xano", key="btn_sync_xano", use_container_width=True, help="Sincroniza fotos reais e dados da tabela PRODUTO do Xano"):
+            qtd = data_manager.sincronizar_produtos_xano()
+            st.toast(f"✓ {qtd} produtos sincronizados do Xano!")
+            st.rerun()
+    with c_btn3:
+        with st.popover("📱 QR", use_container_width=True):
+            share_url = "http://localhost:8501/Cardapio_Digital"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data={share_url}"
+            st.image(qr_url, caption="QR Code da Mesa", use_container_width=True)
+            st.code(share_url, language="text")
+
+st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
 # Barra de Pesquisa e Filtros da Visão de Lista
 c_b1, c_b2 = st.columns([5, 1])
@@ -206,45 +272,8 @@ else:
                     st.markdown(f"<span style='font-weight: 700; color: #fbbf24; font-size: 1.05rem;'>R$ {float(p['preco_unitario']):,.2f}</span>", unsafe_allow_html=True)
 
                 with p_c4:
-                    with st.popover("⚙️ Opções"):
-                        st.caption(f"Editar Produto #{p['codigo_pdv']}")
-                        with st.form(f"edit_{p['id']}"):
-                            novo_cod = st.text_input("Código PDV", value=str(p["codigo_pdv"]))
-                            novo_nome = st.text_input("Nome", value=p["nome"])
-                            cat_opcoes = ["Carnes", "Comida", "Entradas", "Bebidas", "Sobremesas", "Promoção", "Geral"]
-                            idx_cat = cat_opcoes.index(p["categoria"]) if p["categoria"] in cat_opcoes else 0
-                            nova_cat = st.selectbox("Categoria", cat_opcoes, index=idx_cat)
-                            novo_preco = st.number_input("Preço Unitário (R$)", min_value=0.01, value=float(p["preco_unitario"]), step=0.50)
-                            nova_desc = st.text_area("Descrição", value=p.get("descricao", ""))
-                            nova_foto = st.text_input("URL da Foto (Imgur)", value=p.get("url_imagem", ""))
-                            novo_estoque = st.number_input("Estoque (qtd_disp)", min_value=0, value=int(p.get("qtd_disp", 10)))
-                            novo_prod = st.checkbox("Requer Produção (precisa_produzir)", value=bool(p.get("precisa_produzir", 1)))
-                            novo_disp = st.checkbox("Disponível no Cardápio (disponivel)", value=bool(p.get("disponivel", 1)))
-
-                            if st.form_submit_button("Atualizar Informações", type="primary", use_container_width=True):
-                                try:
-                                    data_manager.atualizar_produto(
-                                        produto_id=p["id"],
-                                        codigo_pdv=novo_cod,
-                                        nome=novo_nome,
-                                        categoria=nova_cat,
-                                        preco_unitario=novo_preco,
-                                        descricao=nova_desc,
-                                        url_imagem=nova_foto,
-                                        qtd_disp=int(novo_estoque),
-                                        precisa_produzir=novo_prod,
-                                        disponivel=novo_disp
-                                    )
-                                    st.success("Atualizado com sucesso!")
-                                    st.rerun()
-                                except ValueError as e:
-                                    st.error(str(e))
-
-                        st.divider()
-                        confirma_del = st.checkbox("Confirmar exclusão deste produto", key=f"chk_del_{p['id']}")
-                        if st.button("🗑️ Excluir Produto", key=f"del_p_{p['id']}", disabled=not confirma_del, use_container_width=True):
-                            data_manager.excluir_produto(p["id"])
-                            st.rerun()
+                    if st.button("⚙️ Opções", key=f"btn_opt_dlg_{p['id']}", use_container_width=True, help="Abre janela na tela com opções de edição e exclusão"):
+                        dialog_opcoes_produto(p)
 
                 st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
 
