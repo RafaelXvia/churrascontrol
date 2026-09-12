@@ -822,8 +822,8 @@ def render_navbar(active_tab: str = "home"):
 
     # 1. NAVBAR DESKTOP & TELÕES (>= 992px)
     with st.container(key="cc_nav_desktop"):
-        c_brand, c_nav1, c_nav2, c_nav3, c_nav4, c_nav5 = st.columns(
-            [2.2, 1.2, 1.3, 1.2, 1.5, 1.2],
+        c_brand, c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(
+            [3.2, 1.4, 1.5, 1.4, 1.4],
             vertical_alignment="center"
         )
 
@@ -841,22 +841,18 @@ def render_navbar(active_tab: str = "home"):
             """, unsafe_allow_html=True)
 
         with c_nav1:
-            if st.button("📊 Painel", key="nav_desk_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
+            if st.button("📊 Painel Geral", key="nav_desk_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
                 st.switch_page("app.py")
 
         with c_nav2:
-            if st.button("🍽️ Mesas", key="nav_desk_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
+            if st.button("🍽️ Salão & Mesas", key="nav_desk_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                 st.switch_page("pages/1_Salao_e_Mesas.py")
 
         with c_nav3:
-            if st.button("📋 Catálogo", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+            if st.button("📋 Cardápio", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
                 st.switch_page("pages/2_Cardapio.py")
 
         with c_nav4:
-            if st.button("📱 Cardápio Digital", key="nav_desk_digital", use_container_width=True, type="primary" if active_tab == "cardapio_digital" else "secondary"):
-                st.switch_page("pages/4_Cardapio_Digital.py")
-
-        with c_nav5:
             if st.button("📈 Relatórios", key="nav_desk_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
                 st.switch_page("pages/3_Relatorios.py")
 
@@ -890,10 +886,8 @@ def render_navbar(active_tab: str = "home"):
                     st.switch_page("app.py")
                 if st.button("🍽️ Salão & Mesas", key="nav_mob_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                     st.switch_page("pages/1_Salao_e_Mesas.py")
-                if st.button("📋 Catálogo & PDV", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+                if st.button("📋 Cardápio", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
                     st.switch_page("pages/2_Cardapio.py")
-                if st.button("📱 Cardápio Digital (Cliente)", key="nav_mob_digital", use_container_width=True, type="primary" if active_tab == "cardapio_digital" else "secondary"):
-                    st.switch_page("pages/4_Cardapio_Digital.py")
                 if st.button("📈 Relatórios", key="nav_mob_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
                     st.switch_page("pages/3_Relatorios.py")
 

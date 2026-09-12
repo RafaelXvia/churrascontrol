@@ -116,6 +116,17 @@ st.markdown("""
         padding: 3px 10px;
         border-radius: 6px;
     }
+    .card-delivery-link {
+        text-decoration: none !important;
+        color: inherit !important;
+        display: block !important;
+        height: 100% !important;
+        cursor: pointer !important;
+    }
+    .card-delivery-link:hover {
+        text-decoration: none !important;
+        color: inherit !important;
+    }
     .card-delivery {
         background: rgba(15, 23, 42, 0.85);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -126,10 +137,10 @@ st.markdown("""
         display: flex;
         flex-direction: column;
     }
-    .card-delivery:hover {
+    .card-delivery-link:hover .card-delivery {
         transform: translateY(-4px);
-        box-shadow: 0 14px 30px -6px rgba(0, 0, 0, 0.7);
-        border-color: rgba(245, 158, 11, 0.45);
+        box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.75), 0 0 18px rgba(245, 158, 11, 0.25);
+        border-color: #f59e0b;
     }
     .card-img-container {
         position: relative;
@@ -270,6 +281,17 @@ with c_sh2:
 # Obter produtos cadastrados com fotos reais
 produtos_todos = data_manager.listar_produtos(busca=busca_cardapio)
 
+# Se um card de produto foi clicado via URL query param, abre o modal na tela
+if "detalhe_id" in st.query_params:
+    try:
+        clicked_id = int(st.query_params["detalhe_id"])
+        st.query_params.clear()
+        prod_clicado = next((x for x in produtos_todos if x["id"] == clicked_id), None)
+        if prod_clicado:
+            dialog_detalhes_prato(prod_clicado)
+    except Exception:
+        st.query_params.clear()
+
 # Filtros de Categorias em Chips
 categorias_disponiveis = ["Todas"] + sorted(list(set(p.get("categoria", "Geral") for p in produtos_todos if p.get("categoria"))))
 cat_filtro = st.pills("Categorias do Cardápio", options=categorias_disponiveis, default="Todas", label_visibility="collapsed")
@@ -288,7 +310,7 @@ if not produtos_filtrados:
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Renderização em Grid de 3 Colunas
+    # Renderização em Grid de 3 Colunas com Cards 100% Clicáveis
     cols_per_row = 3
     for i in range(0, len(produtos_filtrados), cols_per_row):
         row_items = produtos_filtrados[i:i + cols_per_row]
@@ -305,36 +327,34 @@ else:
                 badge_disp = f"⚠️ Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
                 is_indisponivel = (p.get("disponivel", 1) == 0)
 
-                # Card com visual imersivo e fotos reais do Imgur
+                # Card 100% Clicável (Ao clicar em qualquer lugar do card, abre o modal de detalhes)
                 st.markdown(f"""
-                <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
-                    <div class="card-img-container">
-                        <img src="{img_url}" referrerpolicy="no-referrer" class="card-img" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'">
-                        <span class="card-badge-float">{badge_prod}</span>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
-                                🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
-                            </span>
-                            <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
-                                {'ESGOTADO' if is_indisponivel else badge_disp}
-                            </span>
+                <a href="?detalhe_id={p['id']}" target="_self" class="card-delivery-link">
+                    <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
+                        <div class="card-img-container">
+                            <img src="{img_url}" referrerpolicy="no-referrer" class="card-img" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'">
+                            <span class="card-badge-float">{badge_prod}</span>
                         </div>
-                        <h4 class="card-title">{p['nome']}</h4>
-                        <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
-                        <div class="card-footer-box">
-                            <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
+                        <div class="card-body">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
+                                    🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
+                                </span>
+                                <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
+                                    {'ESGOTADO' if is_indisponivel else badge_disp}
+                                </span>
+                            </div>
+                            <h4 class="card-title">{p['nome']}</h4>
+                            <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
+                            <div class="card-footer-box">
+                                <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
+                                <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Ver detalhes →</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </a>
+                <div style='height: 16px;'></div>
                 """, unsafe_allow_html=True)
-
-                # Botão destacado para ver os detalhes completos em modal saltado na tela
-                if st.button("🔍 Ver Detalhes do Prato", key=f"btn_det_dig_{p['id']}", use_container_width=True, help="Clique para visualizar foto ampliada, descrição e informações do prato"):
-                    dialog_detalhes_prato(p)
-
-                st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
 # Rodapé Executivo
 ui_components.render_footer()
