@@ -3,6 +3,7 @@ import streamlit as st
 import data_manager
 importlib.reload(data_manager)
 import ui_components
+importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Cardápio Digital - ChurrasControl",
@@ -116,16 +117,8 @@ st.markdown("""
         padding: 3px 10px;
         border-radius: 6px;
     }
-    .card-delivery-link {
-        text-decoration: none !important;
-        color: inherit !important;
-        display: block !important;
-        height: 100% !important;
-        cursor: pointer !important;
-    }
-    .card-delivery-link:hover {
-        text-decoration: none !important;
-        color: inherit !important;
+    [data-testid="stColumn"] {
+        position: relative !important;
     }
     .card-delivery {
         background: rgba(15, 23, 42, 0.85);
@@ -136,11 +129,50 @@ st.markdown("""
         height: 100%;
         display: flex;
         flex-direction: column;
+        cursor: pointer !important;
     }
-    .card-delivery-link:hover .card-delivery {
+    [data-testid="stColumn"]:hover .card-delivery {
         transform: translateY(-4px);
         box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.75), 0 0 18px rgba(245, 158, 11, 0.25);
         border-color: #f59e0b;
+    }
+    /* Botão invisível nativo cobrindo 100% da área do card */
+    div[class*="st-key-btn_prod_card_"] {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 20 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-btn_prod_card_"] div.stButton {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-btn_prod_card_"] div.stButton > button {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        max-height: 100% !important;
+        opacity: 0 !important;
+        visibility: visible !important;
+        cursor: pointer !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 25 !important;
+        pointer-events: auto !important;
+        font-size: 0 !important;
+        color: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        outline: none !important;
     }
     .card-img-container {
         position: relative;
@@ -281,17 +313,6 @@ with c_sh2:
 # Obter produtos cadastrados com fotos reais
 produtos_todos = data_manager.listar_produtos(busca=busca_cardapio)
 
-# Se um card de produto foi clicado via URL query param, abre o modal na tela
-if "detalhe_id" in st.query_params:
-    try:
-        clicked_id = int(st.query_params["detalhe_id"])
-        st.query_params.clear()
-        prod_clicado = next((x for x in produtos_todos if x["id"] == clicked_id), None)
-        if prod_clicado:
-            dialog_detalhes_prato(prod_clicado)
-    except Exception:
-        st.query_params.clear()
-
 # Filtros de Categorias em Chips
 categorias_disponiveis = ["Todas"] + sorted(list(set(p.get("categoria", "Geral") for p in produtos_todos if p.get("categoria"))))
 cat_filtro = st.pills("Categorias do Cardápio", options=categorias_disponiveis, default="Todas", label_visibility="collapsed")
@@ -310,7 +331,7 @@ if not produtos_filtrados:
     </div>
     """, unsafe_allow_html=True)
 else:
-    # Renderização em Grid de 3 Colunas com Cards 100% Clicáveis
+    # Renderização em Grid de 3 Colunas com Cards 100% Clicáveis Nativamente (Sem F5)
     cols_per_row = 3
     for i in range(0, len(produtos_filtrados), cols_per_row):
         row_items = produtos_filtrados[i:i + cols_per_row]
@@ -327,34 +348,61 @@ else:
                 badge_disp = f"⚠️ Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
                 is_indisponivel = (p.get("disponivel", 1) == 0)
 
-                # Card 100% Clicável (Ao clicar em qualquer lugar do card, abre o modal de detalhes)
+                # Card com visual imersivo
                 st.markdown(f"""
-                <a href="?detalhe_id={p['id']}" target="_self" class="card-delivery-link">
-                    <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
-                        <div class="card-img-container">
-                            <img src="{img_url}" referrerpolicy="no-referrer" class="card-img" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'">
-                            <span class="card-badge-float">{badge_prod}</span>
+                <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
+                    <div class="card-img-container">
+                        <img src="{img_url}" referrerpolicy="no-referrer" class="card-img" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'">
+                        <span class="card-badge-float">{badge_prod}</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
+                                🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
+                            </span>
+                            <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
+                                {'ESGOTADO' if is_indisponivel else badge_disp}
+                            </span>
                         </div>
-                        <div class="card-body">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
-                                    🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
-                                </span>
-                                <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
-                                    {'ESGOTADO' if is_indisponivel else badge_disp}
-                                </span>
-                            </div>
-                            <h4 class="card-title">{p['nome']}</h4>
-                            <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
-                            <div class="card-footer-box">
-                                <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
-                                <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Ver detalhes →</span>
-                            </div>
+                        <h4 class="card-title">{p['nome']}</h4>
+                        <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
+                        <div class="card-footer-box">
+                            <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
+                            <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Ver detalhes ✨</span>
                         </div>
                     </div>
-                </a>
-                <div style='height: 16px;'></div>
+                </div>
                 """, unsafe_allow_html=True)
+
+                # Botão invisível nativo que aciona o modal sem nenhum F5 ou recarregamento
+                if st.button("", key=f"btn_prod_card_{p['id']}", use_container_width=True):
+                    dialog_detalhes_prato(p)
+
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+    # JavaScript para assegurar que qualquer clique na área do card dispare o botão invisível
+    st.html("""
+    <script>
+    (function() {
+        function bindCardClicks() {
+            document.querySelectorAll('.card-delivery').forEach(function(card) {
+                if (card.dataset.boundClick) return;
+                card.dataset.boundClick = 'true';
+                card.addEventListener('click', function(ev) {
+                    const col = card.closest('[data-testid="stColumn"]');
+                    if (col) {
+                        const btn = col.querySelector('div[class*="st-key-btn_prod_card_"] button');
+                        if (btn) btn.click();
+                    }
+                });
+            });
+        }
+        bindCardClicks();
+        setTimeout(bindCardClicks, 300);
+        setTimeout(bindCardClicks, 800);
+    })();
+    </script>
+    """)
 
 # Rodapé Executivo
 ui_components.render_footer()

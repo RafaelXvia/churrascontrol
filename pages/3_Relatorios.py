@@ -1,7 +1,10 @@
+import importlib
 import streamlit as st
 import pandas as pd
 import data_manager
+importlib.reload(data_manager)
 import ui_components
+importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Relatórios e Dashboard - ChurrasControl",
