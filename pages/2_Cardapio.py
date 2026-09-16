@@ -40,6 +40,22 @@ st.markdown("""
         height: 100%;
         object-fit: cover;
     }
+    div[class*="st-key-btn_opt_dlg_"] button {
+        border-radius: 8px !important;
+        font-size: 1.15rem !important;
+        padding: 4px 0 !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        transition: all 0.2s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-btn_opt_dlg_"] button:hover {
+        background: rgba(245, 158, 11, 0.2) !important;
+        border-color: #f59e0b !important;
+        transform: scale(1.08) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -174,7 +190,7 @@ with c_title:
     """, unsafe_allow_html=True)
 
 with c_actions:
-    c_btn0, c_btn1, c_btn2, c_btn3 = st.columns([2.0, 2.2, 1.4, 1.2])
+    c_btn0, c_btn1, c_btn2 = st.columns([2.2, 2.6, 1.4])
     with c_btn0:
         if st.button("➕ Novo Produto", key="btn_open_novo_prod", type="primary", use_container_width=True, help="Abre o formulário modal na tela para cadastrar produto"):
             dialog_novo_produto()
@@ -186,12 +202,6 @@ with c_actions:
             qtd = data_manager.sincronizar_produtos_xano()
             st.toast(f"✓ {qtd} produtos sincronizados do Xano!")
             st.rerun()
-    with c_btn3:
-        with st.popover("📱 QR", use_container_width=True):
-            share_url = "http://localhost:8501/Cardapio_Digital"
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data={share_url}"
-            st.image(qr_url, caption="QR Code da Mesa", use_container_width=True)
-            st.code(share_url, language="text")
 
 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
@@ -237,7 +247,7 @@ else:
 
         for p in itens_cat:
             with st.container():
-                p_img, p_c1, p_c2, p_c3, p_c4 = st.columns([1, 1.5, 4.5, 2, 2], vertical_alignment="center")
+                p_img, p_c1, p_c2, p_c3, p_c4 = st.columns([0.8, 1.3, 5.2, 1.9, 0.8], vertical_alignment="center")
                 
                 with p_img:
                     thumb_url = p.get("url_imagem")
@@ -273,7 +283,7 @@ else:
                     st.markdown(f"<span style='font-weight: 700; color: #fbbf24; font-size: 1.05rem;'>R$ {float(p['preco_unitario']):,.2f}</span>", unsafe_allow_html=True)
 
                 with p_c4:
-                    if st.button("⚙️ Opções", key=f"btn_opt_dlg_{p['id']}", use_container_width=True, help="Abre janela na tela com opções de edição e exclusão"):
+                    if st.button("✏️", key=f"btn_opt_dlg_{p['id']}", use_container_width=True, help="Editar e Opções do Produto"):
                         dialog_opcoes_produto(p)
 
                 st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
