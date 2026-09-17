@@ -6,7 +6,7 @@ import ui_components
 importlib.reload(ui_components)
 
 st.set_page_config(
-    page_title="Gestão de Cardápio & PDV - ChurrasControl",
+    page_title="Cardápio & Catálogo - ChurrasControl",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -15,54 +15,11 @@ st.set_page_config(
 # Navbar superior unificada
 ui_components.render_navbar(active_tab="cardapio")
 
-# CSS personalizado para o Painel de Gestão e Imagens Seguras do Imgur
-st.markdown("""
-<meta name="referrer" content="no-referrer">
-<style>
-    .btn-cardapio-digital {
-        background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4) !important;
-    }
-    .img-thumb-container {
-        width: 52px;
-        height: 52px;
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: #0f172a;
-    }
-    .img-thumb {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    div[class*="st-key-btn_opt_dlg_"] button {
-        border-radius: 8px !important;
-        font-size: 1.15rem !important;
-        padding: 4px 0 !important;
-        background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        transition: all 0.2s ease !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    div[class*="st-key-btn_opt_dlg_"] button:hover {
-        background: rgba(245, 158, 11, 0.2) !important;
-        border-color: #f59e0b !important;
-        transform: scale(1.08) !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# ================= MODAIS SALTADOS NA TELA (ST.DIALOG) =================
 
-# Diálogo Modal para Cadastrar Novo Produto
 @st.dialog("➕ Cadastrar Novo Produto no Catálogo", width="large")
 def dialog_novo_produto():
-    st.caption("Preencha todos os atributos técnicos e comerciais da tabela **PRODUTO**.")
+    st.caption("Preencha os atributos cadastrais e gastronômicos para adicionar o produto ao cardápio.")
     with st.form("form_modal_novo_prod"):
         c1, c2, c3 = st.columns([1.5, 3, 2])
         with c1:
@@ -81,17 +38,17 @@ def dialog_novo_produto():
 
         descricao = st.text_area(
             "Descrição Gastronômica & Comercial",
-            placeholder="Ex: Corte nobre com gordura selecionada, assado na brasa viva e servido com farofa crocante e chimichurri.",
-            help="Texto apresentado no cardápio digital do cliente"
+            placeholder="Ex: Corte nobre com gordura selecionada, assado na brasa viva e servido com farofa crocante e chimichurri artesanal.",
+            help="Texto apresentado no cardápio aos clientes"
         )
 
         c_sw1, c_sw2 = st.columns(2)
         with c_sw1:
-            precisa_produzir = st.checkbox("👨‍🍳 Requer Produção / Cozinha (precisa_produzir)", value=True)
+            precisa_produzir = st.checkbox("👨‍🍳 Requer Cozinha / Grelha (precisa_produzir)", value=True)
         with c_sw2:
-            disponivel = st.checkbox("🟢 Disponível para Venda no Cardápio (disponivel)", value=True)
+            disponivel = st.checkbox("🟢 Disponível para Venda (disponivel)", value=True)
 
-        btn_salvar = st.form_submit_button("💾 Salvar Produto Completo no Catálogo", type="primary", use_container_width=True)
+        btn_salvar = st.form_submit_button("💾 Salvar Produto no Catálogo", type="primary", use_container_width=True)
         if btn_salvar:
             if not cod_pdv.strip() or not nome.strip():
                 st.error("Por favor, preencha o Código PDV e o Nome do produto.")
@@ -113,41 +70,74 @@ def dialog_novo_produto():
                 except ValueError as err:
                     st.error(str(err))
 
-# Diálogo Modal para Opções e Edição/Exclusão do Produto
-@st.dialog("⚙️ Opções do Produto", width="large")
-def dialog_opcoes_produto(p):
-    st.markdown(f"### Gerenciar: **{p['nome']}**")
-    st.caption(f"Código PDV: **{p['codigo_pdv']}** | ID do Sistema: #{p['id']}")
 
-    tab_edit, tab_del = st.tabs(["✏️ Editar Cadastro", "🗑️ Excluir Produto"])
+@st.dialog("⚙️ Gerenciar Produto (Editar / Excluir)", width="large")
+def dialog_gerenciar_produto(p):
+    img_preview = p.get("url_imagem")
+    if not img_preview or img_preview.strip() == "":
+        img_preview = "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
+
+    # Preview visual rápido do item no cabeçalho do modal
+    st.markdown(f"""
+    <meta name="referrer" content="no-referrer">
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px;">
+        <div style="width: 72px; height: 72px; border-radius: 10px; overflow: hidden; background: #0f172a; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1);">
+            <img src="{img_preview}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=100'">
+        </div>
+        <div style="flex-grow: 1;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.74rem; background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 2px 8px; border-radius: 5px; font-weight: 700;">
+                    CÓD #{p.get('codigo_pdv', '')}
+                </span>
+                <span style="font-size: 0.74rem; color: #94a3b8;">
+                    {p.get('categoria', 'Geral')}
+                </span>
+            </div>
+            <h3 style="margin: 4px 0 0 0; color: #ffffff; font-size: 1.2rem; font-weight: 700;">
+                {p.get('nome', '')}
+            </h3>
+        </div>
+        <div style="text-align: right; min-width: 100px;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #fbbf24;">
+                R$ {float(p.get('preco_unitario', 0)):,.2f}
+            </div>
+            <div style="font-size: 0.74rem; color: {'#10b981' if p.get('disponivel', 1) else '#ef4444'}; font-weight: 600;">
+                {'Disponível' if p.get('disponivel', 1) else 'Pausado'}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_edit, tab_del = st.tabs(["✏️ Editar Dados do Produto", "🗑️ Excluir Produto"])
 
     with tab_edit:
-        with st.form(f"form_modal_edit_{p['id']}"):
+        with st.form(f"form_modal_edit_prod_{p['id']}"):
             c1, c2 = st.columns([1.5, 3])
             with c1:
                 novo_cod = st.text_input("Código PDV", value=str(p["codigo_pdv"]))
             with c2:
-                novo_nome = st.text_input("Nome", value=p["nome"])
+                novo_nome = st.text_input("Nome do Produto", value=p["nome"])
 
             c3, c4 = st.columns(2)
             with c3:
                 cat_opcoes = ["Carnes", "Comida", "Entradas", "Bebidas", "Sobremesas", "Promoção", "Geral"]
                 idx_cat = cat_opcoes.index(p["categoria"]) if p["categoria"] in cat_opcoes else 0
                 nova_cat = st.selectbox("Categoria", cat_opcoes, index=idx_cat)
-                novo_preco = st.number_input("Preço Unitário (R$)", min_value=0.01, value=float(p["preco_unitario"]), step=0.50)
+                novo_preco = st.number_input("Preço de Venda (R$)", min_value=0.01, value=float(p["preco_unitario"]), step=0.50)
             with c4:
-                novo_estoque = st.number_input("Estoque (qtd_disp)", min_value=0, value=int(p.get("qtd_disp", 10)))
+                novo_estoque = st.number_input("Estoque Disponível (qtd_disp)", min_value=0, value=int(p.get("qtd_disp", 10)))
                 nova_foto = st.text_input("URL da Foto (Imgur)", value=p.get("url_imagem", ""))
 
             nova_desc = st.text_area("Descrição Gastronômica", value=p.get("descricao", ""))
 
             c_s1, c_s2 = st.columns(2)
             with c_s1:
-                novo_prod = st.checkbox("Requer Cozinha (precisa_produzir)", value=bool(p.get("precisa_produzir", 1)))
+                novo_prod = st.checkbox("Requer Cozinha/Grelha (precisa_produzir)", value=bool(p.get("precisa_produzir", 1)))
             with c_s2:
                 novo_disp = st.checkbox("Disponível no Cardápio (disponivel)", value=bool(p.get("disponivel", 1)))
 
-            if st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True):
+            btn_update = st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True)
+            if btn_update:
                 try:
                     data_manager.atualizar_produto(
                         produto_id=p["id"],
@@ -161,133 +151,334 @@ def dialog_opcoes_produto(p):
                         precisa_produzir=novo_prod,
                         disponivel=novo_disp
                     )
-                    st.success("Produto atualizado com sucesso!")
+                    st.success("✓ Produto atualizado com sucesso!")
                     st.rerun()
                 except ValueError as e:
                     st.error(str(e))
 
     with tab_del:
-        st.warning(f"⚠️ Atenção: A exclusão do produto **{p['nome']}** removerá o item do catálogo.")
-        confirma_del = st.checkbox("Confirmo que desejo excluir este produto definitivamente", key=f"dlg_del_chk_{p['id']}")
-        if st.button("🗑️ Excluir Produto Definitivamente", type="primary", disabled=not confirma_del, key=f"dlg_del_btn_{p['id']}", use_container_width=True):
+        st.warning(f"⚠️ Atenção: A exclusão de **{p['nome']}** removerá o item permanentemente do cardápio.")
+        confirma_del = st.checkbox("Sim, confirmo a exclusão definitiva deste produto", key=f"del_chk_card_{p['id']}")
+        if st.button("🗑️ Confirmar e Excluir Definitivamente", type="primary", disabled=not confirma_del, key=f"del_btn_card_{p['id']}", use_container_width=True):
             data_manager.excluir_produto(p["id"])
             st.success("Produto excluído com sucesso!")
             st.rerun()
 
-# Cabeçalho da Página com Botões de Ação
-c_title, c_actions = st.columns([2.8, 3.2], vertical_alignment="center")
 
-with c_title:
-    st.markdown("""
-    <div style="margin-bottom: 0.5rem;">
-        <h2 style="margin: 0; font-size: 1.55rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 10px;">
-            <span>📋</span> Gestão de Cardápio & Catálogo PDV
-        </h2>
-        <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.88rem;">
-            Administração de produtos, códigos PDV, estoque e precificação comercial.
-        </p>
+# ================= CSS PERSONALIZADO (CARDAPIO MODERNO, RESPONSIVO & SEM F5) =================
+st.markdown("""
+<meta name="referrer" content="no-referrer">
+<style>
+    .delivery-hero {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.90) 0%, rgba(15, 23, 42, 0.97) 100%),
+                    url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1200&auto=format&fit=crop&q=80');
+        background-size: cover;
+        background-position: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 22px 28px;
+        margin-bottom: 20px;
+        box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.6);
+    }
+    .delivery-badge-open {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.18);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #34d399;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 9999px;
+    }
+    .delivery-badge-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 6px;
+    }
+    [data-testid="stColumn"] {
+        position: relative !important;
+    }
+    .card-delivery {
+        background: rgba(15, 23, 42, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer !important;
+    }
+    [data-testid="stColumn"]:hover .card-delivery {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.75), 0 0 18px rgba(245, 158, 11, 0.25);
+        border-color: #f59e0b;
+    }
+    .card-img-container {
+        position: relative;
+        width: 100%;
+        height: 185px;
+        overflow: hidden;
+        background: #0f172a;
+    }
+    .card-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+    }
+    [data-testid="stColumn"]:hover .card-img {
+        transform: scale(1.05);
+    }
+    .card-badge-float {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #f59e0b;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+    .card-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    .card-title {
+        font-size: 1.08rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin: 0 0 6px 0;
+        line-height: 1.25;
+    }
+    .card-desc {
+        font-size: 0.83rem;
+        color: #94a3b8;
+        line-height: 1.45;
+        margin-bottom: 12px;
+        flex-grow: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .card-footer-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .card-price {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #fbbf24;
+    }
+    /* Botão invisível nativo cobrindo 100% da área do card */
+    div[class*="st-key-btn_prod_card_"] {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 20 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-btn_prod_card_"] div.stButton {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-btn_prod_card_"] div.stButton > button {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        max-height: 100% !important;
+        opacity: 0 !important;
+        visibility: visible !important;
+        cursor: pointer !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 25 !important;
+        pointer-events: auto !important;
+        font-size: 0 !important;
+        color: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        outline: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ================= CABEÇALHO DO CARDÁPIO & AÇÕES =================
+st.markdown("""
+<div class="delivery-hero">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span class="delivery-badge-open">● Catálogo Oficial</span>
+                <span class="delivery-badge-tag">🔥 Parrilla & Cozinha Caseira</span>
+                <span class="delivery-badge-tag">⭐ Cardápio Interativo</span>
+            </div>
+            <h1 style="margin: 0; font-size: 2.1rem; font-weight: 800; color: #ffffff; letter-spacing: -0.03em;">
+                ChurrasControl • Cardápio & Catálogo
+            </h1>
+            <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 0.95rem; max-width: 680px;">
+                Gerencie todos os pratos, cortes e bebidas. Clique diretamente em qualquer card para <strong>editar informações ou excluir o produto</strong>.
+            </p>
+        </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with c_actions:
-    c_btn0, c_btn1, c_btn2 = st.columns([2.2, 2.6, 1.4])
-    with c_btn0:
-        if st.button("➕ Novo Produto", key="btn_open_novo_prod", type="primary", use_container_width=True, help="Abre o formulário modal na tela para cadastrar produto"):
-            dialog_novo_produto()
-    with c_btn1:
-        if st.button("🍽️ Cardápio Digital", key="btn_open_cardapio_dig", use_container_width=True, help="Abre a tela separada com visual de restaurante / delivery"):
-            st.switch_page("pages/4_Cardapio_Digital.py")
-    with c_btn2:
-        if st.button("🔄 Xano", key="btn_sync_xano", use_container_width=True, help="Sincroniza fotos reais e dados da tabela PRODUTO do Xano"):
-            qtd = data_manager.sincronizar_produtos_xano()
-            st.toast(f"✓ {qtd} produtos sincronizados do Xano!")
-            st.rerun()
-
-st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-
-# Barra de Pesquisa e Filtros da Visão de Lista
-c_b1, c_b2 = st.columns([5, 1])
-with c_b1:
-    busca = st.text_input("🔍 Pesquisar produtos no catálogo", placeholder="Digite nome, categoria, código PDV ou ingrediente...", label_visibility="collapsed")
-with c_b2:
-    if st.button("Limpar Filtro", use_container_width=True):
-        busca = ""
-        st.rerun()
-
-produtos = data_manager.listar_produtos(busca)
-
-st.markdown(f"""
-<div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0 0.5rem 0;">
-    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #f8fafc;">
-        Produtos Cadastrados ({len(produtos)} itens disponíveis)
-    </h3>
 </div>
 """, unsafe_allow_html=True)
 
-if not produtos:
+# Barra de Ações: Novo Produto, Sincronização Xano e Pesquisa
+c_acts1, c_acts2 = st.columns([4, 2.2], vertical_alignment="center")
+
+with c_acts1:
+    busca_cardapio = st.text_input(
+        "🔍 Pesquisar no cardápio",
+        placeholder="Digite o nome do prato, corte, categoria ou código PDV...",
+        label_visibility="collapsed"
+    )
+
+with c_acts2:
+    c_btn_novo, c_btn_sync = st.columns([1.3, 1.0])
+    with c_btn_novo:
+        if st.button("➕ Novo Produto", type="primary", use_container_width=True, help="Cadastrar um novo produto com todos os campos da tabela"):
+            dialog_novo_produto()
+    with c_btn_sync:
+        if st.button("🔄 Xano", use_container_width=True, help="Sincronizar produtos e fotos reais direto da API do Xano"):
+            try:
+                qtd_sync = data_manager.sincronizar_produtos_xano()
+                st.toast(f"✓ {qtd_sync} produtos sincronizados do Xano!", icon="✅")
+                st.rerun()
+            except Exception as ex:
+                st.error(f"Erro ao sincronizar: {ex}")
+
+# Obter produtos cadastrados com fotos reais do SQLite
+produtos_todos = data_manager.listar_produtos(busca=busca_cardapio)
+
+# Filtros de Categorias em Chips
+categorias_disponiveis = ["Todas"] + sorted(list(set(p.get("categoria", "Geral") for p in produtos_todos if p.get("categoria"))))
+cat_filtro = st.pills("Categorias do Cardápio", options=categorias_disponiveis, default="Todas", label_visibility="collapsed")
+
+if cat_filtro and cat_filtro != "Todas":
+    produtos_filtrados = [p for p in produtos_todos if p.get("categoria") == cat_filtro]
+else:
+    produtos_filtrados = produtos_todos
+
+st.markdown(f"""
+<div style="display: flex; justify-content: space-between; align-items: center; margin: 1.2rem 0 0.8rem 0;">
+    <div style="color: #cbd5e1; font-size: 0.92rem; font-weight: 600;">
+        Exibindo <strong>{len(produtos_filtrados)}</strong> itens no cardápio
+    </div>
+    <div style="color: #94a3b8; font-size: 0.8rem;">
+        💡 Dica: <em>Clique no card para abrir o modal de edição ou exclusão</em>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+if not produtos_filtrados:
     st.markdown("""
-    <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 12px; padding: 28px; text-align: center;">
-        <div style="font-size: 2rem;">🔍</div>
-        <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-top: 6px;">Nenhum produto encontrado</div>
-        <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Tente pesquisar por outro termo ou cadastre um novo item acima.</div>
+    <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 16px; padding: 40px; text-align: center; margin-top: 10px;">
+        <div style="font-size: 2.5rem;">🍽️</div>
+        <h3 style="color: #ffffff; margin: 10px 0 4px 0;">Nenhum produto encontrado</h3>
+        <p style="color: #94a3b8; font-size: 0.9rem;">Tente pesquisar por outro termo ou cadastre um novo produto acima.</p>
     </div>
     """, unsafe_allow_html=True)
 else:
-    categorias = sorted(list(set(p.get("categoria", "Geral") for p in produtos if p.get("categoria"))))
+    # Renderização em Grid de 3 Colunas com Cards 100% Clicáveis Nativamente (Sem F5)
+    cols_per_row = 3
+    for i in range(0, len(produtos_filtrados), cols_per_row):
+        row_items = produtos_filtrados[i:i + cols_per_row]
+        cols = st.columns(cols_per_row)
 
-    for cat in categorias:
-        itens_cat = [p for p in produtos if p.get("categoria") == cat]
-        
-        st.markdown(f"""
-        <div style="display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.5rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px;">
-            <span style="font-size: 1.05rem; font-weight: 700; color: #f59e0b;">🏷️ {cat}</span>
-            <span style="font-size: 0.75rem; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;">{len(itens_cat)} item(ns)</span>
-        </div>
-        """, unsafe_allow_html=True)
+        for col_idx, p in enumerate(row_items):
+            with cols[col_idx]:
+                # URL real da foto cadastrada no Xano (Imgur) com fallback
+                img_url = p.get("url_imagem")
+                if not img_url or img_url.strip() == "":
+                    img_url = "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
 
-        for p in itens_cat:
-            with st.container():
-                p_img, p_c1, p_c2, p_c3, p_c4 = st.columns([0.8, 1.3, 5.2, 1.9, 0.8], vertical_alignment="center")
-                
-                with p_img:
-                    thumb_url = p.get("url_imagem")
-                    if not thumb_url or thumb_url.strip() == "":
-                        thumb_url = "https://images.unsplash.com/photo-1544025162-d76694265947?w=100&auto=format&fit=crop&q=80"
-                    
-                    st.markdown(f"""
-                    <div class="img-thumb-container">
-                        <img src="{thumb_url}" referrerpolicy="no-referrer" class="img-thumb" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=100&auto=format&fit=crop&q=80'">
+                badge_prod = "🔥 Na Brasa" if p.get("precisa_produzir") else "⚡ Pronta Entrega"
+                badge_disp = f"⚠️ Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
+                is_indisponivel = (p.get("disponivel", 1) == 0)
+
+                # Card com visual imersivo
+                st.markdown(f"""
+                <div class="card-delivery" style="{'opacity: 0.6;' if is_indisponivel else ''}">
+                    <div class="card-img-container">
+                        <img src="{img_url}" referrerpolicy="no-referrer" class="card-img" alt="{p['nome']}" onerror="this.src='https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80'">
+                        <span class="card-badge-float">{badge_prod}</span>
                     </div>
-                    """, unsafe_allow_html=True)
-
-                with p_c1:
-                    st.markdown(f"""
-                    <span style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; color: #cbd5e1;">
-                        CÓD {p['codigo_pdv']}
-                    </span>
-                    """, unsafe_allow_html=True)
-
-                with p_c2:
-                    disp_badge = "🟢 Disponível" if p.get("disponivel", 1) else "🔴 Pausado"
-                    prod_badge = "🔥 Produção" if p.get("precisa_produzir", 1) else "⚡ Direto"
-                    st.markdown(f"""
-                    <div>
-                        <span style='font-weight: 600; color: #f8fafc; font-size: 0.98rem;'>{p['nome']}</span>
-                        <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
-                            {disp_badge} • {prod_badge} • Estoque: <strong>{p.get('qtd_disp', 0)} un</strong>
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
+                                🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
+                            </span>
+                            <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
+                                {'ESGOTADO' if is_indisponivel else badge_disp}
+                            </span>
+                        </div>
+                        <h4 class="card-title">{p['nome']}</h4>
+                        <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
+                        <div class="card-footer-box">
+                            <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
+                            <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Editar / Excluir ⚙️</span>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
-                with p_c3:
-                    st.markdown(f"<span style='font-weight: 700; color: #fbbf24; font-size: 1.05rem;'>R$ {float(p['preco_unitario']):,.2f}</span>", unsafe_allow_html=True)
+                # Botão invisível nativo que aciona o modal sem nenhum F5 ou recarregamento
+                if st.button("", key=f"btn_prod_card_{p['id']}", use_container_width=True):
+                    dialog_gerenciar_produto(p)
 
-                with p_c4:
-                    if st.button("✏️", key=f"btn_opt_dlg_{p['id']}", use_container_width=True, help="Editar e Opções do Produto"):
-                        dialog_opcoes_produto(p)
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+    # JavaScript para assegurar que qualquer clique na área do card dispare o botão invisível
+    st.html("""
+    <script>
+    (function() {
+        function bindCardClicks() {
+            document.querySelectorAll('.card-delivery').forEach(function(card) {
+                if (card.dataset.boundClick) return;
+                card.dataset.boundClick = 'true';
+                card.addEventListener('click', function(ev) {
+                    const col = card.closest('[data-testid="stColumn"]');
+                    if (col) {
+                        const btn = col.querySelector('div[class*="st-key-btn_prod_card_"] button');
+                        if (btn) btn.click();
+                    }
+                });
+            });
+        }
+        bindCardClicks();
+        setTimeout(bindCardClicks, 300);
+        setTimeout(bindCardClicks, 800);
+    })();
+    </script>
+    """)
 
 # Rodapé Executivo
 ui_components.render_footer()
-
