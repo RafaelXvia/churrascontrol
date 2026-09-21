@@ -24,8 +24,27 @@ O sistema SHALL disponibilizar `listar_produtos(busca)` retornando todos os prod
 - **THEN** o sistema SHALL retornar imediatamente os produtos correspondentes para seleção rápida.
 
 ### Requirement: Atualização e Exclusão no Catálogo
-O sistema SHALL permitir editar nome, categoria, código e preço de produtos existentes via `atualizar_produto(produto_id, ...)`, e desativar produtos através de `excluir_produto(produto_id)`.
+O sistema SHALL permitir editar nome, categoria, código, preço, descrição e foto de produtos existentes via `atualizar_produto(produto_id, ...)`, e desativar produtos através de `excluir_produto(produto_id)`.
 
 #### Scenario: Reajuste cadastral de preço
 - **WHEN** o preço de um produto cadastrado for atualizado pelo administrador
 - **THEN** as consultas futuras ao cardápio SHALL refletir o novo valor unitário sem corromper pedidos já finalizados.
+
+### Requirement: Layout Visual Gastronômico de Cardápio e Modais Interativos
+A interface do Cardápio SHALL renderizar produtos em formato de cards visuais gastronômicos responsivos, contendo imagem ilustrativa, nome, código PDV, categoria, badges de identificação e preço formatado. Cada card SHALL permitir interação direta de clique que abre um diálogo modal (`@st.dialog`) para visualização, edição de dados cadastrais ou exclusão com confirmação sem requerer recarregamento completo da página (F5).
+
+#### Scenario: Clique em card de produto
+- **WHEN** o operador clica no card de um produto do cardápio
+- **THEN** o sistema SHALL abrir o modal `@st.dialog("⚙️ Gerenciar Produto (Editar / Excluir)")` instantaneamente com abas de detalhes/edição e opção segura de exclusão.
+
+#### Scenario: Cadastro via modal saltado
+- **WHEN** o operador clica no botão "➕ Novo Produto" no cabeçalho do cardápio
+- **THEN** o sistema SHALL exibir o modal saltado de cadastro com todos os atributos (código PDV, nome, categoria, preço, descrição e URL da imagem).
+
+### Requirement: Sincronização Sob Demanda com Xano
+A tela de Cardápio SHALL disponibilizar um botão de sincronização manual com o Xano (`🔄 Xano`) no cabeçalho, permitindo processar a fila local e forçar reconciliação bidirecional do catálogo de produtos com a API remota.
+
+#### Scenario: Operador aciona sincronização manual
+- **WHEN** o operador clica em `🔄 Xano` no topo do cardápio
+- **THEN** o sistema SHALL invocar `sincronizar_com_xano()`, exibir o status do processamento (itens sincronizados ou falhas) e atualizar a visualização em tela.
+
