@@ -1,0 +1,6 @@
+id: "2026-09-30-cardapio-digital-qrcode-precomanda"
+title: "Cardápio Digital de Mesa via QR Code com Pré-comanda do Cliente e Baixa Automática de Estoque"
+status: "proposed"
+created: "2026-09-30"
+author: "AI Pair Programmer & ChurrasControl Team"
+description: "Implementação de autoatendimento gastronômico com geração de QR Codes por mesa, cardápio digital responsivo para smartphone de clientes, carrinho de pré-comanda com confirmação sob demanda e baixa automática de estoque."
