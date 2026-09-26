@@ -72,7 +72,7 @@ col_salao, col_comanda = st.columns([7, 5], gap="medium")
 
 # ================= COLUNA 1: MAPA DE MESAS =================
 with col_salao:
-    c_m1, c_m2 = st.columns([3, 2])
+    c_m1, c_m2, c_m3 = st.columns([3, 2, 2])
     with c_m1:
         st.markdown(f"""
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -87,6 +87,8 @@ with col_salao:
     with c_m2:
         if st.button("➕ Abrir Nova Mesa", type="primary", use_container_width=True, key="btn_abrir_nova_mesa"):
             dialog_abrir_mesa()
+    with c_m3:
+        st.markdown('<a href="/Mesas_QRCodes" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:8px 10px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.85rem;">🪪 QR Codes Mesas</button></a>', unsafe_allow_html=True)
 
     if not mesas:
         st.markdown("""

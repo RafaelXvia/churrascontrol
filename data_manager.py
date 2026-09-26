@@ -10,6 +10,7 @@ import io
 import html
 import json
 import time
+import uuid
 import logging
 import sqlite3
 import threading
@@ -150,6 +151,25 @@ def init_db():
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_itens_comanda_cid ON itens_comanda(comanda_id);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_fila_status ON fila_sincronizacao(status);")
+
+            # 8. Tabela de QR Codes e Tokens Estáveis por Mesa Física
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS qrcodes_mesas (
+                numero_mesa INTEGER PRIMARY KEY,
+                token_qrcode TEXT NOT NULL,
+                criado_em TEXT NOT NULL,
+                atualizado_em TEXT NOT NULL
+            );
+            """)
+            for m_num in range(1, 11):
+                cursor.execute("SELECT numero_mesa FROM qrcodes_mesas WHERE numero_mesa = ?", (m_num,))
+                if not cursor.fetchone():
+                    tok_inicial = f"mesa-{m_num}-token"
+                    agora_iso = datetime.now().isoformat()
+                    cursor.execute("""
+                    INSERT INTO qrcodes_mesas (numero_mesa, token_qrcode, criado_em, atualizado_em)
+                    VALUES (?, ?, ?, ?)
+                    """, (m_num, tok_inicial, agora_iso, agora_iso))
 
             # Enriquecimento automático de fotos e descrições para produtos existentes sem foto
             _fotos_padrao = {
@@ -542,8 +562,42 @@ def obter_comanda_detalhes(comanda_id: int) -> Optional[dict]:
                 "total": total
             }
 
+# ================= GESTÃO ATÔMICA DE ESTOQUE (BAIXA E RESTAURAÇÃO) =================
+
+def _decrementar_estoque_cursor(cursor, produto_id: int, quantidade: int):
+    """Baixa de estoque atômica: subtrai quantidade e se <= 0 atualiza disponivel = 0."""
+    cursor.execute("SELECT qtd_disp, disponivel FROM produtos WHERE id = ?", (produto_id,))
+    p = cursor.fetchone()
+    if p:
+        saldo = p["qtd_disp"] if p["qtd_disp"] is not None else 15
+        novo_saldo = max(0, saldo - quantidade)
+        novo_disp = 1 if novo_saldo > 0 else 0
+        cursor.execute("""
+        UPDATE produtos 
+        SET qtd_disp = ?, disponivel = ? 
+        WHERE id = ?
+        """, (novo_saldo, novo_disp, produto_id))
+        return novo_saldo, novo_disp
+    return 0, 0
+
+def _incrementar_estoque_cursor(cursor, produto_id: int, quantidade: int):
+    """Estorno de estoque atômico: adiciona quantidade e reativa disponivel = 1."""
+    cursor.execute("SELECT qtd_disp, disponivel FROM produtos WHERE id = ?", (produto_id,))
+    p = cursor.fetchone()
+    if p:
+        saldo = p["qtd_disp"] if p["qtd_disp"] is not None else 0
+        novo_saldo = saldo + quantidade
+        novo_disp = 1 if novo_saldo > 0 else 0
+        cursor.execute("""
+        UPDATE produtos 
+        SET qtd_disp = ?, disponivel = ? 
+        WHERE id = ?
+        """, (novo_saldo, novo_disp, produto_id))
+        return novo_saldo, novo_disp
+    return 0, 0
+
 def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1, observacao: str = ""):
-    """Lança item na comanda com validação de quantidade, sanitização contra XSS e enfileiramento Xano."""
+    """Lança item na comanda com validação, baixa automática de estoque e enfileiramento Xano."""
     if quantidade <= 0:
         raise ValueError("A quantidade deve ser de no mínimo 1 item.")
 
@@ -583,6 +637,10 @@ def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1
                     float(produto["preco_unitario"]),
                     obs_sanitizada or ""
                 ))
+
+            # Baixa automática de estoque e esgotamento automático se zerar
+            _decrementar_estoque_cursor(cursor, produto["id"], quantidade)
+
             conn.commit()
 
     # Enfileira sincronização com o Xano em background
@@ -604,13 +662,25 @@ def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, obs
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT produto_id, quantidade FROM itens_comanda WHERE id = ?", (item_id,))
+            it_antigo = cursor.fetchone()
+            if not it_antigo:
+                raise ValueError("Item não encontrado.")
+
+            diff_qtd = quantidade - it_antigo["quantidade"]
+
             cursor.execute("""
             UPDATE itens_comanda
             SET quantidade = ?, preco_momento = ?, observacao = ?
             WHERE id = ?
             """, (quantidade, preco_momento, obs_sanitizada or "", item_id))
-            if cursor.rowcount == 0:
-                raise ValueError("Item não encontrado.")
+            
+            # Ajuste de estoque proporcional
+            if diff_qtd > 0:
+                _decrementar_estoque_cursor(cursor, it_antigo["produto_id"], diff_qtd)
+            elif diff_qtd < 0:
+                _incrementar_estoque_cursor(cursor, it_antigo["produto_id"], abs(diff_qtd))
+
             conn.commit()
 
     _enqueue_xano("PATCH", f"/itens_comanda/{item_id}", {
@@ -620,14 +690,181 @@ def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, obs
     })
 
 def remover_item_comanda(item_id: int):
-    """Remove item da comanda imediatamente no SQLite e enfileira exclusão no Xano."""
+    """Remove item da comanda, estorna o estoque atômico e enfileira exclusão no Xano."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT produto_id, quantidade FROM itens_comanda WHERE id = ?", (item_id,))
+            it = cursor.fetchone()
+            if it and it["produto_id"]:
+                _incrementar_estoque_cursor(cursor, it["produto_id"], it["quantidade"])
+
             cursor.execute("DELETE FROM itens_comanda WHERE id = ?", (item_id,))
             conn.commit()
 
     _enqueue_xano("DELETE", f"/itens_comanda/{item_id}")
+
+# ================= GESTÃO DE QR CODES DE MESAS E PRÉ-COMANDA =================
+
+def listar_mesas_qrcodes() -> List[dict]:
+    """Retorna as mesas configuradas com seus tokens de QR Code, status do salão e consumo atual."""
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT q.numero_mesa, q.token_qrcode, q.atualizado_em,
+                   m.id as mesa_id, m.status as mesa_status, m.capacidade,
+                   c.id as comanda_id
+            FROM qrcodes_mesas q
+            LEFT JOIN mesas m ON m.numero_mesa = q.numero_mesa
+            LEFT JOIN comandas c ON c.mesa_id = m.id AND c.status = 'ABERTA'
+            ORDER BY q.numero_mesa ASC
+            """)
+            rows = cursor.fetchall()
+            resultado = []
+            for r in rows:
+                comanda_id = r["comanda_id"]
+                total_mesa = 0.0
+                if comanda_id:
+                    cursor.execute("SELECT SUM(quantidade * preco_momento) as total FROM itens_comanda WHERE comanda_id = ?", (comanda_id,))
+                    tot_row = cursor.fetchone()
+                    if tot_row and tot_row["total"] is not None:
+                        total_mesa = float(tot_row["total"])
+                
+                status_real = r["mesa_status"] or "LIVRE"
+                resultado.append({
+                    "numero_mesa": r["numero_mesa"],
+                    "token_qrcode": r["token_qrcode"],
+                    "atualizado_em": r["atualizado_em"],
+                    "mesa_id": r["mesa_id"],
+                    "status": status_real,
+                    "comanda_id": comanda_id,
+                    "total_atual": total_mesa,
+                    "capacidade": r["capacidade"] or 4
+                })
+            return resultado
+
+def atualizar_qrcode_mesa(numero_mesa: int) -> str:
+    """Gera e grava um novo token estável e único para o QR Code da mesa."""
+    novo_token = f"m{numero_mesa}-{uuid.uuid4().hex[:8]}"
+    now_str = datetime.now().isoformat()
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO qrcodes_mesas (numero_mesa, token_qrcode, criado_em, atualizado_em)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(numero_mesa) DO UPDATE SET
+                token_qrcode = excluded.token_qrcode,
+                atualizado_em = excluded.atualizado_em
+            """, (numero_mesa, novo_token, now_str, now_str))
+            conn.commit()
+    return novo_token
+
+def confirmar_precomanda_cliente(numero_mesa: int, itens: List[dict]) -> dict:
+    """
+    Confirma os itens da pré-comanda enviada pelo cliente sentado na mesa.
+    - Se a mesa estiver livre ou sem comanda aberta, abre automaticamente e atualiza para OCUPADA.
+    - Lança cada item no SQLite.
+    - Decrementa o estoque (qtd_disp) e se <= 0 atualiza disponivel = 0.
+    - Enfileira no Xano para reconciliação remota.
+    - Faz a mesa aparecer imediatamente no Painel Geral e no Salão de Mesas.
+    """
+    if not itens:
+        raise ValueError("A pré-comanda está vazia. Adicione ao menos um prato antes de enviar.")
+    if numero_mesa <= 0:
+        raise ValueError("Número de mesa inválido.")
+
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # 1. Localiza a mesa física ou cria com status OCUPADA
+            cursor.execute("SELECT id, status FROM mesas WHERE numero_mesa = ?", (numero_mesa,))
+            mesa_row = cursor.fetchone()
+            
+            if not mesa_row:
+                cursor.execute("""
+                INSERT INTO mesas (numero_mesa, capacidade, status)
+                VALUES (?, 4, 'OCUPADA')
+                """, (numero_mesa,))
+                mesa_id = cursor.lastrowid
+            else:
+                mesa_id = mesa_row["id"]
+                if mesa_row["status"] != "OCUPADA":
+                    cursor.execute("UPDATE mesas SET status = 'OCUPADA' WHERE id = ?", (mesa_id,))
+
+            # 2. Localiza comanda ABERTA ou cria nova comanda
+            cursor.execute("SELECT id FROM comandas WHERE mesa_id = ? AND status = 'ABERTA'", (mesa_id,))
+            comanda_row = cursor.fetchone()
+            if comanda_row:
+                comanda_id = comanda_row["id"]
+            else:
+                cursor.execute("""
+                INSERT INTO comandas (mesa_id, numero_mesa_historico, data_abertura, status, taxa_servico, qtd_pessoas, valor_total)
+                VALUES (?, ?, ?, 'ABERTA', 1, 2, 0.0)
+                """, (mesa_id, numero_mesa, datetime.now().isoformat()))
+                comanda_id = cursor.lastrowid
+
+            # 3. Processa e lança cada item
+            itens_confirmados = []
+            for item in itens:
+                prod_id = int(item["produto_id"])
+                qtd = int(item.get("quantidade", 1))
+                obs = html.escape(str(item.get("observacao", "")).strip())
+                if qtd <= 0:
+                    continue
+
+                cursor.execute("SELECT id, nome, categoria, preco_unitario, qtd_disp, disponivel FROM produtos WHERE id = ?", (prod_id,))
+                prod = cursor.fetchone()
+                if not prod:
+                    continue
+
+                # Se já há o mesmo produto lançado na comanda, soma quantidade
+                cursor.execute("SELECT id, quantidade FROM itens_comanda WHERE comanda_id = ? AND produto_id = ?", (comanda_id, prod_id))
+                existente = cursor.fetchone()
+                if existente:
+                    nova_qtd = existente["quantidade"] + qtd
+                    cursor.execute("""
+                    UPDATE itens_comanda 
+                    SET quantidade = ?, observacao = COALESCE(NULLIF(?, ''), observacao)
+                    WHERE id = ?
+                    """, (nova_qtd, obs or "", existente["id"]))
+                else:
+                    cursor.execute("""
+                    INSERT INTO itens_comanda (comanda_id, produto_id, nome_produto_historico, categoria_historico, quantidade, preco_momento, observacao)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (comanda_id, prod["id"], prod["nome"], prod["categoria"], qtd, float(prod["preco_unitario"]), obs or ""))
+
+                # Baixa atômica de estoque
+                _decrementar_estoque_cursor(cursor, prod["id"], qtd)
+
+                itens_confirmados.append({
+                    "produto_id": prod["id"],
+                    "nome": prod["nome"],
+                    "quantidade": qtd,
+                    "preco_unitario": float(prod["preco_unitario"]),
+                    "observacao": obs
+                })
+
+            conn.commit()
+
+    # Enfileira sincronização com o Xano fora do lock de banco
+    for it_conf in itens_confirmados:
+        _enqueue_xano("POST", f"/comandas/{comanda_id}/itens", {
+            "produto_query": it_conf["nome"],
+            "quantidade": it_conf["quantidade"],
+            "observacao": it_conf["observacao"]
+        })
+
+    return {
+        "status": "sucesso",
+        "mesa_id": mesa_id,
+        "numero_mesa": numero_mesa,
+        "comanda_id": comanda_id,
+        "itens_confirmados": itens_confirmados,
+        "total_itens": len(itens_confirmados)
+    }
 
 def fechar_comanda(comanda_id: int, valor_final: float, taxa_servico: bool = True):
     """Finaliza a comanda, libera a mesa física no SQLite e despacha evento crítico ao Xano."""
