@@ -248,7 +248,7 @@ with col_comanda:
                 st.caption("Nenhum item lançado até o momento.")
             else:
                 for it in itens:
-                    it_col1, it_col2, it_col3 = st.columns([6, 3, 2])
+                    it_col1, it_col2, it_col3, it_col4 = st.columns([5, 3, 2, 2])
                     with it_col1:
                         obs_html = f'<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 2px;">💬 {it["observacao"]}</div>' if it.get("observacao") else ''
                         st.markdown(f"""
@@ -261,7 +261,16 @@ with col_comanda:
                     with it_col2:
                         st.markdown(f"<div style='font-weight: 700; color: #fbbf24; text-align: right;'>R$ {float(it['subtotal']):.2f}</div>", unsafe_allow_html=True)
                     with it_col3:
-                        if st.button("✖", key=f"rm_it_{it['id']}", help="Remover item", use_container_width=True):
+                        # Botão para diminuir a quantidade em 1
+                        if st.button("➖", key=f"dec_it_{it['id']}", help="Diminuir 1 unidade", use_container_width=True):
+                            nova_qtd = it["quantidade"] - 1
+                            if nova_qtd > 0:
+                                data_manager.editar_item_comanda(it["id"], nova_qtd, it["preco_momento"], it.get("observacao", ""))
+                            else:
+                                data_manager.remover_item_comanda(it["id"])
+                            st.rerun()
+                    with it_col4:
+                        if st.button("🗑️", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
                             data_manager.remover_item_comanda(it["id"])
                             st.rerun()
                     st.divider()

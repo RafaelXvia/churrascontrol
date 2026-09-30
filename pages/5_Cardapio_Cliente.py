@@ -207,12 +207,48 @@ html, body, [data-testid="stAppViewContainer"], section.main {
     position: relative !important;
 }
 
+/* Botão Flutuante do Carrinho (Floating Action Button Fixo na tela) */
+div[class*="st-key-btn_fab_carrinho_fixo"] {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 999999 !important;
+    width: auto !important;
+}
+div[class*="st-key-btn_fab_carrinho_fixo"] button {
+    background: linear-gradient(135deg, #e65100 0%, #ff8f00 100%) !important;
+    color: #ffffff !important;
+    border: 2px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 40px !important;
+    padding: 12px 22px !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    box-shadow: 0 8px 25px rgba(230, 81, 0, 0.65), 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+div[class*="st-key-btn_fab_carrinho_fixo"] button:hover {
+    transform: scale(1.08) !important;
+    box-shadow: 0 12px 32px rgba(230, 81, 0, 0.85) !important;
+}
+
 /* Responsividade Mobile Extrema */
 @media (max-width: 640px) {
     .cliente-header { padding: 12px 16px; }
     .cliente-brand h1 { font-size: 1.2rem; }
     .client-img-wrap { height: 160px; }
     .mesa-badge-cliente { font-size: 0.85rem; padding: 6px 12px; }
+    div[class*="st-key-btn_fab_carrinho_fixo"] {
+        bottom: 18px !important;
+        right: 18px !important;
+    }
+    div[class*="st-key-btn_fab_carrinho_fixo"] button {
+        padding: 10px 18px !important;
+        font-size: 0.95rem !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -539,3 +575,8 @@ st.html("""
 })();
 </script>
 """)
+
+# Botão Flutuante Fixo (FAB) visível em qualquer altura de rolagem no celular e PC
+fab_cart_label = f"🛒 Carrinho ({qtd_total_carrinho})" if qtd_total_carrinho > 0 else "🛒 Ver Carrinho"
+if st.button(fab_cart_label, key="btn_fab_carrinho_fixo", type="primary" if qtd_total_carrinho > 0 else "secondary"):
+    modal_carrinho_mesa()
