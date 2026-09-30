@@ -196,37 +196,15 @@ header[data-testid="stHeader"] { background: transparent !important; }
     gap: 4px;
 }
 
-/* Botão invisível nativo cobrindo 100% da área do card */
-div[class*="st-key-btn_client_card_"] {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 20 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+/* Permite rolagem suave e livre em todos os dispositivos */
+html, body, [data-testid="stAppViewContainer"], section.main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
 }
-div[class*="st-key-btn_client_card_"] div.stButton {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-div[class*="st-key-btn_client_card_"] div.stButton > button {
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    opacity: 0 !important;
-    visibility: visible !important;
-    cursor: pointer !important;
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
+
+[data-testid="stColumn"] {
+    position: relative !important;
 }
 
 /* Responsividade Mobile Extrema */
@@ -511,7 +489,7 @@ for i in range(0, len(produtos_filtrados), cols_per_row):
         
         with col:
             st.markdown(f"""
-            <div class="client-card" style="{'opacity: 0.55; cursor: not-allowed !important;' if esta_esgotado else ''}">
+            <div class="client-card {'card-esgotado' if esta_esgotado else ''}" style="{'opacity: 0.55; cursor: not-allowed !important;' if esta_esgotado else 'cursor: pointer;'}">
                 <div class="client-img-wrap">
                     <img class="client-img" src="{img_url}" alt="{html.escape(prod['nome'])}"/>
                     {badge_estoque}
@@ -522,22 +500,22 @@ for i in range(0, len(produtos_filtrados), cols_per_row):
                     <div class="client-desc">{html.escape(prod.get('descricao', ''))}</div>
                     <div class="client-footer">
                         <span class="client-price">R$ {float(prod['preco_unitario']):.2f}</span>
-                        <span class="client-action-hint">{'🚫 Indisponível' if esta_esgotado else 'Pedir ➔'}</span>
+                        <span class="client-action-hint">{'🚫 Esgotado' if esta_esgotado else 'Tocar p/ Pedir ➔'}</span>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Botão invisível sobreposto que dispara o modal sem F5 ao clicar no card
-            if st.button("", key=f"btn_client_card_{prod['id']}", use_container_width=True):
-                if esta_esgotado:
-                    st.toast("⚠️ Este prato está esgotado no momento.", icon="🚫")
-                else:
+            # Botão de Ação Integrado (Disparado também ao tocar no card acima)
+            if esta_esgotado:
+                st.button("🚫 Prato Esgotado", key=f"btn_esgotado_{prod['id']}", disabled=True, use_container_width=True)
+            else:
+                if st.button("➕ Escolher Prato", key=f"btn_choose_{prod['id']}", use_container_width=True):
                     modal_adicionar_prato(prod)
             
-            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-# JavaScript Delegado para garantir que clicar em qualquer parte do card dispare o botão invisível
+# JavaScript Delegado para que tocar no card acione o botão daquela coluna
 st.html("""
 <script>
 (function() {
@@ -546,9 +524,10 @@ st.html("""
             if (card.dataset.boundClick) return;
             card.dataset.boundClick = 'true';
             card.addEventListener('click', function(ev) {
+                if (card.classList.contains('card-esgotado')) return;
                 const col = card.closest('[data-testid="stColumn"]');
                 if (col) {
-                    const btn = col.querySelector('div[class*="st-key-btn_client_card_"] button');
+                    const btn = col.querySelector('button:not([disabled])');
                     if (btn) btn.click();
                 }
             });
@@ -556,8 +535,7 @@ st.html("""
     }
     bindClientCards();
     setTimeout(bindClientCards, 250);
-    setTimeout(bindClientCards, 600);
-    setTimeout(bindClientCards, 1200);
+    setTimeout(bindClientCards, 700);
 })();
 </script>
 """)
