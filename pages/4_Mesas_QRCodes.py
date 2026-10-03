@@ -95,33 +95,98 @@ section[data-testid="stSidebar"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
+import streamlit.components.v1 as components
+
 # Barra de apoio discreta no topo para voltar ao sistema ou ver status
-col_back, col_title_head = st.columns([1, 4])
+col_back, col_title_head, col_timer = st.columns([1, 3, 2])
 with col_back:
     st.markdown('<a href="/Salao_e_Mesas" target="_self" style="text-decoration:none;"><button style="background:#262a34; color:#fff; border:1px solid #444; border-radius:8px; padding:8px 16px; cursor:pointer; font-weight:600; width:100%;">← Voltar ao Salão</button></a>', unsafe_allow_html=True)
 with col_title_head:
     st.markdown('<h2 style="margin:0; color:#fff; font-weight:800;">🪪 Central de QR Codes das Mesas (Simulador Físico)</h2>', unsafe_allow_html=True)
-    st.markdown("""
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:4px;">
-        <span style="color:#94a3b8; font-size:0.86rem;">Página que simula as placas das mesas físicas. O QR Code só muda quando você clica em Atualizar.</span>
-        <div style="background:rgba(34, 197, 94, 0.12); border:1px solid rgba(34, 197, 94, 0.35); border-radius:20px; padding:4px 12px; font-size:0.8rem; color:#86efac; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
-            <span style="width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; animation: pulse 2s infinite;"></span>
-            ⏱️ Auto-atualização ativa a cada 1m
-        </div>
+    st.caption("Página isolada que simula as placas das mesas físicas. O QR Code só muda quando você clica em Atualizar.")
+with col_timer:
+    # Componente visual com contagem regressiva viva de 60s descendo segundo a segundo
+    components.html("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
+        overflow: hidden;
+    }
+    .timer-badge {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.45);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        color: #86efac;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22c55e;
+        display: inline-block;
+        box-shadow: 0 0 8px #22c55e;
+    }
+    .countdown-val {
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 0.95rem;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 3px 10px;
+        border-radius: 8px;
+        min-width: 38px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    </style>
+    </head>
+    <body>
+    <div class="timer-badge">
+        <span class="pulse-dot"></span>
+        <span>Atualizando em:</span>
+        <span id="timer_num" class="countdown-val">60s</span>
     </div>
-    """, unsafe_allow_html=True)
 
-# JavaScript para auto-atualizar a cada 1 minuto (60.000 ms)
-st.html("""
-<script>
-(function() {
-    if (window._mesasRefreshTimer) clearTimeout(window._mesasRefreshTimer);
-    window._mesasRefreshTimer = setTimeout(function() {
-        window.location.reload();
-    }, 60000);
-})();
-</script>
-""")
+    <script>
+    let count = 60;
+    const el = document.getElementById("timer_num");
+    const interval = setInterval(() => {
+        count--;
+        if (el) el.innerText = count + "s";
+        if (count <= 0) {
+            clearInterval(interval);
+            if (el) el.innerText = "Recarregando...";
+            try {
+                window.top.location.reload();
+            } catch(e) {
+                try {
+                    window.parent.location.reload();
+                } catch(e2) {
+                    window.location.reload();
+                }
+            }
+        }
+    }, 1000);
+    </script>
+    </body>
+    </html>
+    """, height=48)
 
 st.divider()
 
