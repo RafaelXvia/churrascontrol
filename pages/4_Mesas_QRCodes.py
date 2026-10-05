@@ -92,6 +92,16 @@ section[data-testid="stSidebar"] { display: none !important; }
     .printable-area, .printable-area * { visibility: visible; }
     .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
 }
+div[class*="st-key-btn_silent_auto_refresh"] {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0px !important;
+    width: 0px !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -171,15 +181,17 @@ with col_timer:
         if (el) el.innerText = count + "s";
         if (count <= 0) {
             clearInterval(interval);
-            if (el) el.innerText = "Recarregando...";
+            if (el) el.innerText = "Atualizando...";
             try {
-                window.top.location.reload();
-            } catch(e) {
-                try {
-                    window.parent.location.reload();
-                } catch(e2) {
+                const doc = window.top.document || window.parent.document || document;
+                const btn = doc.querySelector('div[class*="st-key-btn_silent_auto_refresh"] button');
+                if (btn) {
+                    btn.click();
+                } else {
                     window.location.reload();
                 }
+            } catch(e) {
+                window.location.reload();
             }
         }
     }, 1000);
@@ -187,6 +199,10 @@ with col_timer:
     </body>
     </html>
     """, height=48)
+
+# Botão invisível acionado silenciosamente pelo timer acima (dispara atualização via WebSocket sem F5)
+if st.button("", key="btn_silent_auto_refresh"):
+    st.rerun()
 
 st.divider()
 
