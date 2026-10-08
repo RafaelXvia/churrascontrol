@@ -55,17 +55,110 @@ def dialog_abrir_mesa():
 mesas = data_manager.listar_mesas()
 produtos = data_manager.listar_produtos()
 
-# Cabeçalho da Página
+import streamlit.components.v1 as components
+
+# CSS para o botão silencioso de auto-refresh sem F5
 st.markdown("""
-<div style="margin-bottom: 1rem;">
-    <h2 style="margin: 0; font-size: 1.55rem; font-weight: 800; color: #ffffff;">
-        Salão & Gestão de Comandas
-    </h2>
-    <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.88rem;">
-        Terminal de atendimento em tempo real, controle de ocupação e lançamento ágil de pedidos.
-    </p>
-</div>
+<style>
+div[class*="st-key-btn_silent_salao_refresh"] {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0px !important;
+    width: 0px !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+</style>
 """, unsafe_allow_html=True)
+
+# Cabeçalho da Página com Timer Regressivo de 60s
+col_head_title, col_head_timer = st.columns([3, 2])
+with col_head_title:
+    st.markdown("""
+    <div style="margin-bottom: 0.5rem;">
+        <h2 style="margin: 0; font-size: 1.55rem; font-weight: 800; color: #ffffff;">
+            Salão & Gestão de Comandas
+        </h2>
+        <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 0.88rem;">
+            Terminal de atendimento em tempo real, controle de ocupação e lançamento ágil de pedidos.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_head_timer:
+    components.html("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    body {
+        margin: 0; padding: 0; background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex; justify-content: flex-end; align-items: center; height: 100%; overflow: hidden;
+    }
+    .timer-badge {
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.45);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        color: #86efac;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .pulse-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #22c55e; display: inline-block; box-shadow: 0 0 8px #22c55e;
+    }
+    .countdown-val {
+        color: #ffffff; font-weight: 900; font-size: 0.95rem;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 3px 10px; border-radius: 8px; min-width: 38px; text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    </style>
+    </head>
+    <body>
+    <div class="timer-badge">
+        <span class="pulse-dot"></span>
+        <span>Atualizando em:</span>
+        <span id="timer_num" class="countdown-val">60s</span>
+    </div>
+    <script>
+    let count = 60;
+    const el = document.getElementById("timer_num");
+    const interval = setInterval(() => {
+        count--;
+        if (el) el.innerText = count + "s";
+        if (count <= 0) {
+            clearInterval(interval);
+            if (el) el.innerText = "Atualizando...";
+            try {
+                const doc = window.top.document || window.parent.document || document;
+                const btn = doc.querySelector('div[class*="st-key-btn_silent_salao_refresh"] button');
+                if (btn) {
+                    btn.click();
+                } else {
+                    window.location.reload();
+                }
+            } catch(e) {
+                window.location.reload();
+            }
+        }
+    }, 1000);
+    </script>
+    </body>
+    </html>
+    """, height=48)
+
+# Botão invisível acionado silenciosamente pelo timer acima (dispara atualização via WebSocket sem F5)
+if st.button("", key="btn_silent_salao_refresh"):
+    st.rerun()
 
 # Layout em duas colunas responsivas: Salão (7) e Comanda (5)
 col_salao, col_comanda = st.columns([7, 5], gap="medium")
@@ -248,7 +341,7 @@ with col_comanda:
                 st.caption("Nenhum item lançado até o momento.")
             else:
                 for it in itens:
-                    it_col1, it_col2, it_col3, it_col4 = st.columns([5, 3, 2, 2])
+                    it_col1, it_col2, it_col3, it_col4, it_col5 = st.columns([5, 2.5, 1.5, 1.5, 1.5])
                     with it_col1:
                         obs_html = f'<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 2px;">💬 {it["observacao"]}</div>' if it.get("observacao") else ''
                         st.markdown(f"""
@@ -270,6 +363,12 @@ with col_comanda:
                                 data_manager.remover_item_comanda(it["id"])
                             st.rerun()
                     with it_col4:
+                        # Botão para aumentar a quantidade em 1
+                        if st.button("➕", key=f"inc_it_{it['id']}", help="Aumentar 1 unidade", use_container_width=True):
+                            nova_qtd = it["quantidade"] + 1
+                            data_manager.editar_item_comanda(it["id"], nova_qtd, it["preco_momento"], it.get("observacao", ""))
+                            st.rerun()
+                    with it_col5:
                         if st.button("🗑️", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
                             data_manager.remover_item_comanda(it["id"])
                             st.rerun()
