@@ -16,18 +16,30 @@ No modelo operacional do ChurrasControl, o garçom e o operador lançam pedidos 
   - Geração visual de cartões com QR Code para cada mesa cadastrada no sistema (ex: Mesas 1 a 10).
   - Exibição de link direto para compartilhamento e visualização rápida.
   - Opção de impressão/exportação dos cartões para disposição nas mesas do salão.
+  - **Atualização Reativa Silenciosa com `@st.fragment(run_every=60)`**: Sincronização periódica a cada 60s sem recarregar a página (sem F5), preservando o scroll do usuário.
+  - **Timer Regressivo Visual de 60s**: Contador vivo descendo segundo a segundo com reset automático a cada ciclo.
 - **Página de Autoatendimento do Cliente (`pages/5_Cardapio_Cliente.py`)**:
   - Leitura de parâmetro de URL (`?mesa=X`).
   - Layout mobile-first responsivo com visualização gastronômica, fotos e filtro rápido de categorias.
+  - **Carrinho Flutuante (FAB)**: Botão fixo no canto inferior da tela do celular (`position: fixed`) permitindo acesso rápido à pré-comanda de qualquer altura do scroll.
   - Modal/Gaveta de Pré-Comanda com ajuste de quantidades, observações por item e cálculo de subtotal.
   - Botão de envio "Confirmar Pedido na Cozinha" com trava contra envios duplicados.
+- **Salão & Gestão de Comandas (`pages/1_Salao_e_Mesas.py`)**:
+  - Controles incrementais ágeis na listagem de itens da comanda (`➕` aumentar, `➖` diminuir e `🗑️` excluir) com ajuste automático proporcional de estoque.
+  - Badge de timer regressivo de 60s no cabeçalho e fragmento reativo silencioso `@st.fragment(run_every=60)`.
 - **Regra de Negócio de Estoque no `data_manager.py`**:
   - Decrementar `qtd_disp` na confirmação de itens de comanda.
   - Se `qtd_disp <= 0`, atualizar `disponivel = 0` (produto esgotado).
   - Bloquear adição à pré-comanda de produtos marcados como esgotados.
-  - Restauração de estoque caso um item seja removido da comanda ou comanda cancelada.
+  - Restauração de estoque caso um item seja diminuído ou removido da comanda ou comanda cancelada.
+- **Arquitetura Local-First (Zero Rate Limit no Xano)**:
+  - Todas as leituras periódicas do timer consultam 100% o SQLite local (`churrascontrol.db`), consumindo 0 requisições HTTP da cota do Xano.
+- **Limpeza de Artefatos Legados**:
+  - Descontinuação do antigo `churras_data.json` em prol do SQLite WAL.
 
 ## 3. Benefícios
 - **Autonomia do Cliente**: Pedidos rápidos sem necessidade de aguardar garçom para ver o cardápio.
 - **Zero Poluição de Dados**: A pré-comanda protege o salão de cliques acidentais; a cozinha só é acionada após confirmação explícita.
 - **Controle Preciso de Estoque**: Evita vender pratos esgotados em horários de pico.
+- **Experiência em Tempo Real Fluida**: Atualizações reativas de salão e mesas sem perda de foco ou scroll.
+- **Proteção de Quota de API**: Consultas de auto-refresh sem impacto na cota do Xano.

@@ -33,3 +33,11 @@
   - Confirmação de pré-comanda criando ou anexando à comanda da mesa.
   - Lançamento atômico e enfileiramento Xano.
 - [x] 5.2 Executar suíte completa de testes (`test_app.py`, `test_cardapio_delivery.py`, `test_cardapio_cliente_qrcode.py`).
+
+## Fase 6: Refinamento Reativo e UX (Timer 60s, FAB e Controles de Salão)
+- [x] 6.1 Adicionar botão `➕` (aumentar) e `➖` (diminuir) por item na comanda ativa em `pages/1_Salao_e_Mesas.py` com ajuste proporcional de estoque.
+- [x] 6.2 Implementar Floating Action Button (FAB) fixo para o carrinho na tela mobile do cliente (`pages/5_Cardapio_Cliente.py`).
+- [x] 6.3 Substituir recarregamento com F5 por sincronização reativa nativa `@st.fragment(run_every=60)` em `pages/4_Mesas_QRCodes.py` e `pages/1_Salao_e_Mesas.py`.
+- [x] 6.4 Implementar timer visual de contagem regressiva viva de 60s com reset cíclico contínuo sem travar a interface.
+- [x] 6.5 Validar arquitetura Local-First (leitura 100% no SQLite) garantindo zero consumo de cota do Xano e ausência de Rate Limit.
+- [x] 6.6 Confirmar descarte do arquivo de persistência legado `churras_data.json`.

@@ -26,3 +26,21 @@ O sistema SHALL disponibilizar interface de autoatendimento onde itens seleciona
 #### Scenario: Confirmação e envio da pré-comanda
 - **WHEN** o cliente clica no botão "Confirmar e Enviar Pedido"
 - **THEN** o sistema SHALL criar ou reutilizar a comanda aberta daquela mesa, gravar os itens na tabela `itens_comanda`, decrementar o estoque, enfileirar as ações para o Xano e tornar o pedido imediatamente visível nas telas operacionais do restaurante.
+
+### Requirement: Ajuste Granular de Itens na Comanda do Salão
+O sistema SHALL disponibilizar controles de incremento (`➕`), decremento (`➖`) e exclusão (`🗑️`) na lista de itens registrados da comanda aberta em `pages/1_Salao_e_Mesas.py`.
+
+#### Scenario: Operador aumentando quantidade de item
+- **WHEN** o garçom clica no botão `➕` do item na comanda
+- **THEN** o sistema SHALL incrementar a quantidade em 1 unidade, recalcular o subtotal da comanda, decrementar 1 unidade do estoque de `produtos` e enfileirar a alteração para o Xano.
+
+#### Scenario: Operador diminuindo quantidade de item
+- **WHEN** o garçom clica no botão `➖` do item na comanda com quantidade > 1
+- **THEN** o sistema SHALL decrementar a quantidade em 1 unidade, estornar 1 unidade de volta ao estoque de `produtos` e atualizar o subtotal da comanda.
+
+### Requirement: Atualização Reativa Periódica com Timer Regressivo
+O sistema SHALL executar atualização silenciosa de dados a cada 60 segundos via `@st.fragment(run_every=60)` no Salão & Mesas e na Central de QR Codes sem disparar recarregamento de página completo (sem F5), mantendo o scroll do usuário e exibindo contador visual regressivo de 60s a 0s com reset automático contínuo.
+
+#### Scenario: Expiração do ciclo de 60 segundos
+- **WHEN** o cronômetro visual atinge 0s
+- **THEN** o sistema SHALL reexecutar o fragmento via WebSocket com dados frescos do SQLite local e reiniciar a contagem regressiva em 60s sem alterar a posição de rolagem da tela.
