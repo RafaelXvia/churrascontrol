@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import importlib
 import urllib.parse
@@ -7,6 +8,33 @@ import ui_components
 
 importlib.reload(data_manager)
 importlib.reload(ui_components)
+
+def detectar_base_url() -> str:
+    """Detecta automaticamente o domínio base (Discloud HTTPS, ambiente de produção ou localhost)."""
+    # 1. Variável de ambiente explícita
+    env_url = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+    if env_url:
+        return env_url
+
+    # 2. Detecção automática pelos headers da requisição HTTP no Streamlit
+    try:
+        if hasattr(st, "context") and hasattr(st.context, "headers") and st.context.headers:
+            headers = st.context.headers
+            host = headers.get("x-forwarded-host") or headers.get("host")
+            proto = headers.get("x-forwarded-proto")
+            if host:
+                if not proto:
+                    proto = "https" if ("discloud" in host or "https" in str(headers.get("referer", ""))) else "http"
+                return f"{proto}://{host}".rstrip("/")
+    except Exception:
+        pass
+
+    # 3. Se estiver em ambiente Discloud ou produção
+    if os.getenv("DISCLOUD_APP_ID") or "discloud" in os.getenv("HOSTNAME", "").lower():
+        return "https://churrascontrol.discloud.dev"
+
+    # 4. Fallback padrão local
+    return "http://localhost:8501"
 
 st.set_page_config(
     page_title="ChurrasControl — QR Codes das Mesas",
@@ -214,8 +242,22 @@ def painel_central_qrcodes():
 
     st.markdown("---")
 
-    # Obtém a base URL do servidor (padrão local http://localhost:8501)
-    base_url = "http://localhost:8501"
+    # Obtém a base URL do servidor (detecta automaticamente Discloud HTTPS ou localhost)
+    base_url = detectar_base_url()
+
+    # Expander discreto para conferir ou alterar o domínio base
+    with st.expander("🌐 Domínio dos QR Codes & Cardápio Digital", expanded=False):
+        c_d1, c_d2 = st.columns([3, 1])
+        with c_d1:
+            base_url = st.text_input(
+                "Domínio base para geração dos links e QR Codes",
+                value=base_url,
+                help="Na Discloud é https://churrascontrol.discloud.dev. Em ambiente local pode ser http://localhost:8501."
+            ).rstrip("/")
+        with c_d2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("🌐 Discloud", use_container_width=True, help="Define para https://churrascontrol.discloud.dev"):
+                base_url = "https://churrascontrol.discloud.dev"
 
     # Exibe as mesas em grade de 3 colunas
     cols_per_row = 3
