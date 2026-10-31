@@ -814,7 +814,7 @@ def render_navbar(active_tab: str = "home"):
     """
     Renderiza a barra superior de navegação moderna e 100% responsiva:
     - Em Telões e Desktop (>= 992px): Exibe a barra executiva completa com abas diretas.
-    - Em Tablets e Smartphones (< 992px): Exibe a barra compacta com o botão Menu Sanduíche (☰)
+    - Em Tablets e Smartphones (< 992px): Exibe a barra compacta com o botão Menu
       que abre o painel retrátil de navegação ao ser clicado.
     active_tab: 'home' | 'salao' | 'cardapio' | 'relatorios'
     """
@@ -830,7 +830,11 @@ def render_navbar(active_tab: str = "home"):
         with c_brand:
             st.markdown("""
             <div class="cc-navbar-brand">
-                <div class="cc-navbar-logo">🥩</div>
+                <div class="cc-navbar-logo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                    </svg>
+                </div>
                 <div>
                     <div class="cc-navbar-title">
                         CHURRAS<span>CONTROL</span>
@@ -841,29 +845,33 @@ def render_navbar(active_tab: str = "home"):
             """, unsafe_allow_html=True)
 
         with c_nav1:
-            if st.button("📊 Painel Geral", key="nav_desk_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
+            if st.button("Painel Geral", key="nav_desk_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
                 st.switch_page("app.py")
 
         with c_nav2:
-            if st.button("🍽️ Salão & Mesas", key="nav_desk_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
+            if st.button("Salão & Mesas", key="nav_desk_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                 st.switch_page("pages/1_Salao_e_Mesas.py")
 
         with c_nav3:
-            if st.button("📋 Cardápio", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+            if st.button("Cardápio", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
                 st.switch_page("pages/2_Cardapio.py")
 
         with c_nav4:
-            if st.button("📈 Relatórios", key="nav_desk_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
+            if st.button("Relatórios", key="nav_desk_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
                 st.switch_page("pages/3_Relatorios.py")
 
-    # 2. NAVBAR MOBILE & TABLETS (< 992px com Menu Sanduíche ☰)
+    # 2. NAVBAR MOBILE & TABLETS (< 992px com Menu)
     with st.container(key="cc_nav_mobile"):
         m_brand, m_menu = st.columns([3.2, 0.8], vertical_alignment="center")
 
         with m_brand:
             st.markdown("""
             <div class="cc-navbar-brand">
-                <div class="cc-navbar-logo">🥩</div>
+                <div class="cc-navbar-logo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                    </svg>
+                </div>
                 <div>
                     <div class="cc-navbar-title">
                         CHURRAS<span>CONTROL</span>
@@ -874,7 +882,7 @@ def render_navbar(active_tab: str = "home"):
             """, unsafe_allow_html=True)
 
         with m_menu:
-            with st.popover("☰", use_container_width=True, help="Abrir Menu de Navegação"):
+            with st.popover("Menu", use_container_width=True, help="Abrir Menu de Navegação"):
                 st.markdown("""
                 <div style="padding: 2px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
                     <span style="font-size: 0.74rem; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.06em;">
@@ -882,13 +890,13 @@ def render_navbar(active_tab: str = "home"):
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("📊 Painel Geral", key="nav_mob_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
+                if st.button("Painel Geral", key="nav_mob_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
                     st.switch_page("app.py")
-                if st.button("🍽️ Salão & Mesas", key="nav_mob_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
+                if st.button("Salão & Mesas", key="nav_mob_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                     st.switch_page("pages/1_Salao_e_Mesas.py")
-                if st.button("📋 Cardápio", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+                if st.button("Cardápio", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
                     st.switch_page("pages/2_Cardapio.py")
-                if st.button("📈 Relatórios", key="nav_mob_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
+                if st.button("Relatórios", key="nav_mob_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
                     st.switch_page("pages/3_Relatorios.py")
 
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
@@ -903,9 +911,9 @@ def render_footer():
             <span>Gestão Gastronômica & PDV em Alta Disponibilidade</span>
         </div>
         <div class="cc-footer-badges">
-            <span class="cc-footer-pill">🗄️ Persistência: SQLite (WAL)</span>
-            <span class="cc-footer-pill">⚡ Latência: Imediata</span>
-            <span class="cc-footer-pill">🔄 Worker Xano: Fila Persistente</span>
+            <span class="cc-footer-pill">Persistência: SQLite (WAL)</span>
+            <span class="cc-footer-pill">Latência: Imediata</span>
+            <span class="cc-footer-pill">Worker Xano: Fila Ativa</span>
             <span class="cc-footer-pill">© 2026 Innovation Lab</span>
         </div>
     </div>

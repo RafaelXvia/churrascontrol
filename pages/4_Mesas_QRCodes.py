@@ -38,7 +38,6 @@ def detectar_base_url() -> str:
 
 st.set_page_config(
     page_title="ChurrasControl — QR Codes das Mesas",
-    page_icon="🪪",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -142,7 +141,7 @@ def painel_central_qrcodes():
     with col_back:
         st.markdown('<a href="/Salao_e_Mesas" target="_self" style="text-decoration:none;"><button style="background:#262a34; color:#fff; border:1px solid #444; border-radius:8px; padding:8px 16px; cursor:pointer; font-weight:600; width:100%;">← Voltar ao Salão</button></a>', unsafe_allow_html=True)
     with col_title_head:
-        st.markdown('<h2 style="margin:0; color:#fff; font-weight:800;">🪪 Central de QR Codes das Mesas (Simulador Físico)</h2>', unsafe_allow_html=True)
+        st.markdown('<h2 style="margin:0; color:#fff; font-weight:800;">Central de QR Codes das Mesas (Simulador Físico)</h2>', unsafe_allow_html=True)
         st.caption("Página isolada que simula as placas das mesas físicas. O QR Code só muda quando você clica em Atualizar.")
     with col_timer:
         # Componente visual com contagem regressiva viva de 60s descendo segundo a segundo
@@ -246,7 +245,7 @@ def painel_central_qrcodes():
     base_url = detectar_base_url()
 
     # Expander discreto para conferir ou alterar o domínio base
-    with st.expander("🌐 Domínio dos QR Codes & Cardápio Digital", expanded=False):
+    with st.expander("Domínio dos QR Codes & Cardápio Digital", expanded=False):
         c_d1, c_d2 = st.columns([3, 1])
         with c_d1:
             base_url = st.text_input(
@@ -256,7 +255,7 @@ def painel_central_qrcodes():
             ).rstrip("/")
         with c_d2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("🌐 Discloud", use_container_width=True, help="Define para https://churrascontrol.discloud.dev"):
+            if st.button("Discloud", use_container_width=True, help="Define para https://churrascontrol.discloud.dev"):
                 base_url = "https://churrascontrol.discloud.dev"
 
     # Exibe as mesas em grade de 3 colunas
@@ -281,7 +280,7 @@ def painel_central_qrcodes():
             url_encoded = urllib.parse.quote(url_cliente)
             qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_encoded}"
             
-            badge_html = f'<span class="status-badge-ocupada">🔴 MESA OCUPADA</span>' if status == "OCUPADA" else f'<span class="status-badge-livre">🟢 MESA LIVRE</span>'
+            badge_html = f'<span class="status-badge-ocupada">MESA OCUPADA</span>' if status == "OCUPADA" else f'<span class="status-badge-livre">MESA LIVRE</span>'
             consumo_html = f'<div class="consumo-info">Consumo Atual: R$ {consumo:.2f}</div>' if status == "OCUPADA" else '<div class="consumo-info" style="color:#78909c;">Sem consumo ativo</div>'
 
             with col:
@@ -300,9 +299,9 @@ def painel_central_qrcodes():
                 # Botões de controle no Streamlit
                 btn_col1, btn_col2 = st.columns(2)
                 with btn_col1:
-                    if st.button("🔄 Atualizar QR", key=f"btn_att_qr_{num_mesa}", use_container_width=True, help="Regera um novo token seguro para este QR Code"):
+                    if st.button("Atualizar QR", key=f"btn_att_qr_{num_mesa}", use_container_width=True, help="Regera um novo token seguro para este QR Code"):
                         novo_tok = data_manager.atualizar_qrcode_mesa(num_mesa)
-                        st.toast(f"QR Code da Mesa {num_mesa} atualizado com sucesso! (Novo token: {novo_tok})", icon="✅")
+                        st.toast(f"QR Code da Mesa {num_mesa} atualizado com sucesso! (Novo token: {novo_tok})")
                         st.rerun()
                 
                 with btn_col2:
@@ -310,13 +309,13 @@ def painel_central_qrcodes():
                     st.markdown(f"""
                     <a href="{url_cliente}" target="_blank" style="text-decoration:none;">
                         <button style="width:100%; background:#e65100; color:#fff; border:none; padding:8px 10px; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem;">
-                            📱 Testar Mesa {num_mesa}
+                            Acessar Mesa {num_mesa}
                         </button>
                     </a>
                     """, unsafe_allow_html=True)
                 
                 # Link para copiar
-                with st.expander("📋 Ver Link do QR Code", expanded=False):
+                with st.expander("Ver Link do QR Code", expanded=False):
                     st.code(url_cliente, language="text")
                     st.caption(f"Última alteração do QR: {m.get('atualizado_em', 'Inicial')[:19].replace('T', ' ')}")
 

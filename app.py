@@ -24,7 +24,6 @@ importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="ChurrasControl - Painel Operacional",
-    page_icon="🥩",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -93,7 +92,7 @@ with kpi4:
 
 st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-# ================= MÓDULOS OPERACIONAIS (CARDS CLICÁVEIS) =================
+# ================= MÓDULOS OPERACIONAIS (CARDS CLICÁVEIS COM SVGS) =================
 st.markdown("""
 <div style="margin: 1.5rem 0 0.85rem 0;">
     <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc;">
@@ -113,13 +112,19 @@ with mod1:
         <div>
             <div class="cc-module-header">
                 <div class="cc-module-left">
-                    <div class="cc-module-icon icon-amber">🍽️</div>
+                    <div class="cc-module-icon icon-amber">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                        </svg>
+                    </div>
                     <div class="cc-module-titles">
                         <h4>1. Salão e Mesas</h4>
                         <span class="badge-amber">Frente de Caixa & Garçom</span>
                     </div>
                 </div>
-                <div class="cc-module-chevron">➔</div>
+                <div class="cc-module-chevron">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
             </div>
             <p class="cc-module-desc">
                 Abertura de mesas, visualização de comandas, lançamento de itens com observações e fechamento de conta.
@@ -127,7 +132,7 @@ with mod1:
         </div>
         <div class="cc-module-action" style="color: #f59e0b !important;">
             <span>Acessar Salão & Mesas</span>
-            <span style="font-size: 0.95rem; transition: transform 0.25s ease;">➔</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -140,13 +145,19 @@ with mod2:
         <div>
             <div class="cc-module-header">
                 <div class="cc-module-left">
-                    <div class="cc-module-icon icon-blue">📋</div>
+                    <div class="cc-module-icon icon-blue">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h6"/>
+                        </svg>
+                    </div>
                     <div class="cc-module-titles">
                         <h4>2. Cardápio Comercial</h4>
                         <span class="badge-blue">Produtos & Precificação</span>
                     </div>
                 </div>
-                <div class="cc-module-chevron">➔</div>
+                <div class="cc-module-chevron">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
             </div>
             <p class="cc-module-desc">
                 Gestão do catálogo de produtos, código único de PDV, categorias e atualização rápida de preços.
@@ -154,7 +165,7 @@ with mod2:
         </div>
         <div class="cc-module-action" style="color: #60a5fa !important;">
             <span>Acessar Cardápio</span>
-            <span style="font-size: 0.95rem; transition: transform 0.25s ease;">➔</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -167,13 +178,19 @@ with mod3:
         <div>
             <div class="cc-module-header">
                 <div class="cc-module-left">
-                    <div class="cc-module-icon icon-emerald">📊</div>
+                    <div class="cc-module-icon icon-emerald">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
                     <div class="cc-module-titles">
                         <h4>3. Relatórios & PDF</h4>
                         <span class="badge-emerald">Auditoria & Performance</span>
                     </div>
                 </div>
-                <div class="cc-module-chevron">➔</div>
+                <div class="cc-module-chevron">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
             </div>
             <p class="cc-module-desc">
                 Indicadores de faturamento, ticket médio por comanda, histórico de vendas e emissão de relatório PDF.
@@ -181,7 +198,7 @@ with mod3:
         </div>
         <div class="cc-module-action" style="color: #34d399 !important;">
             <span>Acessar Relatórios</span>
-            <span style="font-size: 0.95rem; transition: transform 0.25s ease;">➔</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </div>
     </div>
     """, unsafe_allow_html=True)

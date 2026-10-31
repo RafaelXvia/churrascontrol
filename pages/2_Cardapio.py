@@ -7,7 +7,6 @@ importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Cardápio & Catálogo - ChurrasControl",
-    page_icon="📋",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -17,7 +16,7 @@ ui_components.render_navbar(active_tab="cardapio")
 
 # ================= MODAIS SALTADOS NA TELA (ST.DIALOG) =================
 
-@st.dialog("➕ Cadastrar Novo Produto no Catálogo", width="large")
+@st.dialog("Cadastrar Novo Produto no Catálogo", width="large")
 def dialog_novo_produto():
     st.caption("Preencha os atributos cadastrais e gastronômicos para adicionar o produto ao cardápio.")
     with st.form("form_modal_novo_prod"):
@@ -44,11 +43,11 @@ def dialog_novo_produto():
 
         c_sw1, c_sw2 = st.columns(2)
         with c_sw1:
-            precisa_produzir = st.checkbox("👨‍🍳 Requer Cozinha / Grelha (precisa_produzir)", value=True)
+            precisa_produzir = st.checkbox("Requer Cozinha / Grelha (precisa_produzir)", value=True)
         with c_sw2:
-            disponivel = st.checkbox("🟢 Disponível para Venda (disponivel)", value=True)
+            disponivel = st.checkbox("Disponível para Venda (disponivel)", value=True)
 
-        btn_salvar = st.form_submit_button("💾 Salvar Produto no Catálogo", type="primary", use_container_width=True)
+        btn_salvar = st.form_submit_button("Salvar Produto no Catálogo", type="primary", use_container_width=True)
         if btn_salvar:
             if not cod_pdv.strip() or not nome.strip():
                 st.error("Por favor, preencha o Código PDV e o Nome do produto.")
@@ -65,13 +64,13 @@ def dialog_novo_produto():
                         precisa_produzir=precisa_produzir,
                         disponivel=disponivel
                     )
-                    st.success(f"✓ Produto '{nome}' cadastrado com sucesso!")
+                    st.success(f"Produto '{nome}' cadastrado com sucesso!")
                     st.rerun()
                 except ValueError as err:
                     st.error(str(err))
 
 
-@st.dialog("⚙️ Gerenciar Produto (Editar / Excluir)", width="large")
+@st.dialog("Gerenciar Produto (Editar / Excluir)", width="large")
 def dialog_gerenciar_produto(p):
     img_preview = p.get("url_imagem")
     if not img_preview or img_preview.strip() == "":
@@ -108,7 +107,7 @@ def dialog_gerenciar_produto(p):
     </div>
     """, unsafe_allow_html=True)
 
-    tab_edit, tab_del = st.tabs(["✏️ Editar Dados do Produto", "🗑️ Excluir Produto"])
+    tab_edit, tab_del = st.tabs(["Editar Dados do Produto", "Excluir Produto"])
 
     with tab_edit:
         with st.form(f"form_modal_edit_prod_{p['id']}"):
@@ -136,7 +135,7 @@ def dialog_gerenciar_produto(p):
             with c_s2:
                 novo_disp = st.checkbox("Disponível no Cardápio (disponivel)", value=bool(p.get("disponivel", 1)))
 
-            btn_update = st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True)
+            btn_update = st.form_submit_button("Salvar Alterações", type="primary", use_container_width=True)
             if btn_update:
                 try:
                     data_manager.atualizar_produto(
@@ -151,15 +150,15 @@ def dialog_gerenciar_produto(p):
                         precisa_produzir=novo_prod,
                         disponivel=novo_disp
                     )
-                    st.success("✓ Produto atualizado com sucesso!")
+                    st.success("Produto atualizado com sucesso!")
                     st.rerun()
                 except ValueError as e:
                     st.error(str(e))
 
     with tab_del:
-        st.warning(f"⚠️ Atenção: A exclusão de **{p['nome']}** removerá o item permanentemente do cardápio.")
+        st.warning(f"Atenção: A exclusão de **{p['nome']}** removerá o item permanentemente do cardápio.")
         confirma_del = st.checkbox("Sim, confirmo a exclusão definitiva deste produto", key=f"del_chk_card_{p['id']}")
-        if st.button("🗑️ Confirmar e Excluir Definitivamente", type="primary", disabled=not confirma_del, key=f"del_btn_card_{p['id']}", use_container_width=True):
+        if st.button("Confirmar e Excluir Definitivamente", type="primary", disabled=not confirma_del, key=f"del_btn_card_{p['id']}", use_container_width=True):
             data_manager.excluir_produto(p["id"])
             st.success("Produto excluído com sucesso!")
             st.rerun()
@@ -336,9 +335,9 @@ st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
         <div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span class="delivery-badge-open">● Catálogo Oficial</span>
-                <span class="delivery-badge-tag">🔥 Parrilla & Cozinha Caseira</span>
-                <span class="delivery-badge-tag">⭐ Cardápio Interativo</span>
+                <span class="delivery-badge-open">Catálogo Oficial</span>
+                <span class="delivery-badge-tag">Parrilla & Cozinha Caseira</span>
+                <span class="delivery-badge-tag">Cardápio Interativo</span>
             </div>
             <h1 style="margin: 0; font-size: 2.1rem; font-weight: 800; color: #ffffff; letter-spacing: -0.03em;">
                 ChurrasControl • Cardápio & Catálogo
@@ -356,7 +355,7 @@ c_acts1, c_acts2 = st.columns([4, 2.2], vertical_alignment="center")
 
 with c_acts1:
     busca_cardapio = st.text_input(
-        "🔍 Pesquisar no cardápio",
+        "Pesquisar no cardápio",
         placeholder="Digite o nome do prato, corte, categoria ou código PDV...",
         label_visibility="collapsed"
     )
@@ -364,13 +363,13 @@ with c_acts1:
 with c_acts2:
     c_btn_novo, c_btn_sync = st.columns([1.3, 1.0])
     with c_btn_novo:
-        if st.button("➕ Novo Produto", type="primary", use_container_width=True, help="Cadastrar um novo produto com todos os campos da tabela"):
+        if st.button("+ Novo Produto", type="primary", use_container_width=True, help="Cadastrar um novo produto com todos os campos da tabela"):
             dialog_novo_produto()
     with c_btn_sync:
-        if st.button("🔄 Xano", use_container_width=True, help="Sincronizar produtos e fotos reais direto da API do Xano"):
+        if st.button("Sincronizar Xano", use_container_width=True, help="Sincronizar produtos e fotos reais direto da API do Xano"):
             try:
                 qtd_sync = data_manager.sincronizar_produtos_xano()
-                st.toast(f"✓ {qtd_sync} produtos sincronizados do Xano!", icon="✅")
+                st.toast(f"{qtd_sync} produtos sincronizados do Xano!")
                 st.rerun()
             except Exception as ex:
                 st.error(f"Erro ao sincronizar: {ex}")
@@ -393,7 +392,7 @@ st.markdown(f"""
         Exibindo <strong>{len(produtos_filtrados)}</strong> itens no cardápio
     </div>
     <div style="color: #94a3b8; font-size: 0.8rem;">
-        💡 Dica: <em>Clique no card para abrir o modal de edição ou exclusão</em>
+        Dica: <em>Clique no card para abrir o modal de edição ou exclusão</em>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -401,7 +400,6 @@ st.markdown(f"""
 if not produtos_filtrados:
     st.markdown("""
     <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 16px; padding: 40px; text-align: center; margin-top: 10px;">
-        <div style="font-size: 2.5rem;">🍽️</div>
         <h3 style="color: #ffffff; margin: 10px 0 4px 0;">Nenhum produto encontrado</h3>
         <p style="color: #94a3b8; font-size: 0.9rem;">Tente pesquisar por outro termo ou cadastre um novo produto acima.</p>
     </div>
@@ -420,8 +418,8 @@ else:
                 if not img_url or img_url.strip() == "":
                     img_url = "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
 
-                badge_prod = "🔥 Na Brasa" if p.get("precisa_produzir") else "⚡ Pronta Entrega"
-                badge_disp = f"⚠️ Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
+                badge_prod = "Requer Cozinha" if p.get("precisa_produzir") else "Pronta Entrega"
+                badge_disp = f"Restam {p.get('qtd_disp')} un." if p.get("qtd_disp", 0) <= 5 else f"Estoque: {p.get('qtd_disp')} un."
                 is_indisponivel = (p.get("disponivel", 1) == 0)
 
                 # Card com visual imersivo
@@ -434,7 +432,7 @@ else:
                     <div class="card-body">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
-                                🏷️ CÓD {p['codigo_pdv']} • {p['categoria']}
+                                CÓD {p['codigo_pdv']} • {p['categoria']}
                             </span>
                             <span style="font-size: 0.72rem; color: {'#ef4444' if is_indisponivel else '#10b981'}; font-weight: 700;">
                                 {'ESGOTADO' if is_indisponivel else badge_disp}
@@ -444,7 +442,7 @@ else:
                         <p class="card-desc">{p.get('descricao') or 'Prato preparado com ingredientes frescos e seleção artesanal da casa.'}</p>
                         <div class="card-footer-box">
                             <span class="card-price">R$ {float(p['preco_unitario']):,.2f}</span>
-                            <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Editar / Excluir ⚙️</span>
+                            <span style="font-size: 0.78rem; color: #f59e0b; font-weight: 600;">Editar / Excluir</span>
                         </div>
                     </div>
                 </div>

@@ -1,17 +1,24 @@
 """
-Teste Automatizado: Funcionalidade de Cardapio Delivery & Paridade de Schema de Produto
+Teste Automatizado: Funcionalidade de Cardápio Delivery & Paridade de Schema de Produto
+Localização: tools/test_cardapio_delivery.py
 """
 import sys
+import os
 import time
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 import data_manager
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 def test_cardapio_delivery():
-    print("=" * 60)
+    print("=" * 65)
     print("TESTE: CARDAPIO DELIVERY & SCHEMA COMPLETO DE PRODUTO")
-    print("=" * 60)
+    print("=" * 65)
 
     test_code = f"T{int(time.time()) % 100000}"
 
@@ -63,11 +70,12 @@ def test_cardapio_delivery():
     # 4. Limpeza
     data_manager.excluir_produto(p["id"])
     assert len(data_manager.listar_produtos(busca=test_code)) == 0
-    print("  [PASS] Exclusao e fila Xano OK.")
+    print("  [PASS] Exclusao de produto OK.")
 
-    print("-" * 60)
-    print("RESULTADO: TODOS OS TESTES DE CARDAPIO DELIVERY PASSARAM!")
+    print("-" * 65)
+    print("RESULTADO: TODOS OS TESTES DE CARDAPIO DELIVERY PASSARAM COM SUCESSO!")
     return True
 
 if __name__ == "__main__":
-    test_cardapio_delivery()
+    ok = test_cardapio_delivery()
+    sys.exit(0 if ok else 1)

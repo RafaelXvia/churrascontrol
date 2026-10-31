@@ -1,9 +1,14 @@
 """
 Teste de Validação da Persistência SQLite e Fila Xano — ChurrasControl
+Localização: tools/test_sqlite_sync.py
 """
 import os
 import sys
 import sqlite3
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -13,17 +18,16 @@ def run_tests():
     print("TESTE DE VALIDACAO: PERSISTENCIA SQLITE & FILA XANO")
     print("=" * 65)
 
-    base_dir = os.path.dirname(__file__)
-    db_path = os.path.join(base_dir, "churrascontrol.db")
+    db_path = os.path.join(PROJECT_ROOT, "churrascontrol.db")
 
     # 1. Carregar data_manager e verificar inicialização do banco
     import data_manager
     print(f"  [PASS] Modulo data_manager importado com sucesso.")
     
     if not os.path.exists(db_path):
-        print(f"  [FAIL] Banco {db_path} nao foi criado.")
+        print(f"  [FAIL] Banco {db_path} nao foi encontrado.")
         return False
-    print(f"  [PASS] Banco SQLite criado em: {db_path}")
+    print(f"  [PASS] Banco SQLite ativo em: {db_path}")
 
     # 2. Verificar tabelas no SQLite
     conn = sqlite3.connect(db_path)
@@ -40,7 +44,7 @@ def run_tests():
             print(f"  [FAIL] Tabela ausente: {t}")
             return False
 
-    # 3. Testar Leitura e Migração de Dados
+    # 3. Testar Leitura de Dados
     produtos = data_manager.listar_produtos()
     mesas = data_manager.listar_mesas()
     print(f"  [PASS] Produtos cadastrados no SQLite: {len(produtos)}")
@@ -59,10 +63,10 @@ def run_tests():
     print(f"  [PASS] Abertura de Mesa OK: Mesa ID {mesa_id}, Comanda ID {comanda_id}")
 
     # 5. Adicionar item na comanda
+    detalhes = None
     if produtos:
         prod_teste = produtos[0]
         data_manager.adicionar_item_comanda(comanda_id, prod_teste["id"], quantidade=2, observacao="Sem pimenta")
-        # Adicionar novamente o mesmo produto para testar agregação atômica de quantidade
         data_manager.adicionar_item_comanda(comanda_id, prod_teste["id"], quantidade=1)
         
         detalhes = data_manager.obter_comanda_detalhes(comanda_id)
@@ -72,7 +76,7 @@ def run_tests():
         print(f"  [PASS] Adicao e agregacao de item OK (Qtd total = 3)")
 
     # 6. Fechar Comanda
-    total = detalhes["total"] if produtos else 50.0
+    total = detalhes["total"] if detalhes else 50.0
     data_manager.fechar_comanda(comanda_id, valor_final=total, taxa_servico=True)
     
     # Verificar se mesa foi liberada

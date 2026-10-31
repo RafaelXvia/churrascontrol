@@ -1,27 +1,27 @@
 """
 Suíte de Testes Automatizados — Cardápio Digital Cliente, QR Codes e Baixa de Estoque
-Valida:
-1. Geração e persistência de QR Codes por mesa física com atualização sob demanda.
-2. Baixa atômica de estoque (qtd_disp) e esgotamento automático (disponivel = 0).
-3. Estorno de estoque ao remover ou ajustar item de comanda.
-4. Confirmação de pré-comanda de cliente (criação automática de mesa/comanda e fila Xano).
-5. Compilação sintática de todas as páginas envolvidas.
+Localização: tools/test_cardapio_cliente_qrcode.py
 """
 import os
+import sys
 import py_compile
 import unittest
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 import data_manager
 
 class TestCardapioClienteQRCode(unittest.TestCase):
     
     def test_01_compilacao_paginas(self):
         """Valida que todas as páginas compilam sem erros de sintaxe."""
-        base_dir = os.path.dirname(__file__)
         paginas = [
-            os.path.join(base_dir, "pages", "4_Mesas_QRCodes.py"),
-            os.path.join(base_dir, "pages", "5_Cardapio_Cliente.py"),
-            os.path.join(base_dir, "pages", "1_Salao_e_Mesas.py"),
-            os.path.join(base_dir, "data_manager.py"),
+            os.path.join(PROJECT_ROOT, "pages", "4_Mesas_QRCodes.py"),
+            os.path.join(PROJECT_ROOT, "pages", "5_Cardapio_Cliente.py"),
+            os.path.join(PROJECT_ROOT, "pages", "1_Salao_e_Mesas.py"),
+            os.path.join(PROJECT_ROOT, "data_manager.py"),
         ]
         for p in paginas:
             self.assertTrue(os.path.exists(p), f"Arquivo não encontrado: {p}")
@@ -46,7 +46,6 @@ class TestCardapioClienteQRCode(unittest.TestCase):
 
     def test_03_baixa_e_esgotamento_de_estoque(self):
         """Valida que lançar quantidade decrementa estoque e zera disponivel ao atingir 0."""
-        # Cria produto específico para o teste
         cod_teste = "TEST_ESTOQUE_01"
         data_manager.criar_produto(
             codigo_pdv=cod_teste,

@@ -1,9 +1,14 @@
 """
 Teste de Validação de Segurança, Integridade Relacional e Performance — ChurrasControl
+Localização: tools/test_security_performance.py
 """
 import os
 import sys
 import sqlite3
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

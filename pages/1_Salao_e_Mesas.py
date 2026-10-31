@@ -7,7 +7,6 @@ importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Salão e Mesas - ChurrasControl",
-    page_icon="🍽️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -26,7 +25,7 @@ if "mesa_id" in st.query_params and st.session_state["mesa_selecionada"] is None
         pass
 
 # Modal Dialog Bonito para Abrir Nova Mesa
-@st.dialog("🍽️ Abrir Nova Mesa no Salão")
+@st.dialog("Abrir Nova Mesa no Salão")
 def dialog_abrir_mesa():
     st.markdown("""
     <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 14px;">
@@ -153,17 +152,16 @@ def renderizar_painel_salao():
             </div>
             """, unsafe_allow_html=True)
         with c_m2:
-            if st.button("➕ Abrir Nova Mesa", type="primary", use_container_width=True, key="btn_abrir_nova_mesa"):
+            if st.button("+ Abrir Nova Mesa", type="primary", use_container_width=True, key="btn_abrir_nova_mesa"):
                 dialog_abrir_mesa()
         with c_m3:
-            st.markdown('<a href="/Mesas_QRCodes" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:8px 10px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.85rem;">🪪 QR Codes Mesas</button></a>', unsafe_allow_html=True)
+            st.markdown('<a href="/Mesas_QRCodes" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:8px 10px; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.85rem;">QR Codes Mesas</button></a>', unsafe_allow_html=True)
 
         if not mesas:
             st.markdown("""
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 12px; padding: 28px; text-align: center; margin-top: 10px;">
-                <div style="font-size: 2rem;">🍽️</div>
                 <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-top: 6px;">Nenhuma mesa aberta no salão</div>
-                <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Clique em "➕ Abrir Nova Mesa" acima para iniciar o primeiro atendimento.</div>
+                <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Clique em "+ Abrir Nova Mesa" acima para iniciar o primeiro atendimento.</div>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -176,20 +174,20 @@ def renderizar_painel_salao():
                         card_class = "cc-mesa-card cc-mesa-card-active" if is_selected else "cc-mesa-card"
                         active_style = "border-color: #f59e0b !important; box-shadow: 0 12px 28px -6px rgba(245, 158, 11, 0.35) !important;" if is_selected else ""
                         badge_status = '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">OCUPADA</span>'
-                        sel_indicator = '<span style="color: #f59e0b; font-size: 0.75rem; font-weight: 700; margin-left: 6px;">● SELECIONADA</span>' if is_selected else ''
-                        action_text = "Comanda Selecionada ➔" if is_selected else "Clique para abrir comanda ➔"
+                        sel_indicator = '<span style="color: #f59e0b; font-size: 0.75rem; font-weight: 700; margin-left: 6px;">SELECIONADA</span>' if is_selected else ''
+                        action_text = "Comanda Selecionada" if is_selected else "Ver comanda"
 
                         st.markdown(f"""
                         <div class="{card_class}" style="{active_style}" data-comanda-id="{m['comanda_id']}">
                             <div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 800; color: #f8fafc; font-size: 1.15rem;">
-                                        🍽️ MESA {m['numero_mesa']} {sel_indicator}
+                                        MESA {m['numero_mesa']} {sel_indicator}
                                     </span>
                                     {badge_status}
                                 </div>
                                 <div style="color: #94a3b8; font-size: 0.82rem; margin: 6px 0 0 0;">
-                                    👥 Capacidade: {m.get('capacidade', 1)} pessoa(s)
+                                    Capacidade: {m.get('capacidade', 1)} pessoa(s)
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 2px;">
@@ -245,7 +243,6 @@ def renderizar_painel_salao():
         if not sel_id:
             st.markdown("""
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 12px; padding: 28px; text-align: center;">
-                <div style="font-size: 2rem;">👈</div>
                 <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-top: 6px;">Nenhuma mesa selecionada</div>
                 <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Clique em qualquer card de mesa ao lado para selecionar e gerenciar o consumo.</div>
             </div>
@@ -273,14 +270,14 @@ def renderizar_painel_salao():
                             </div>
                         </div>
                         <span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
-                            👥 {comanda.get('qtd_pessoas', 1)} pax
+                            {comanda.get('qtd_pessoas', 1)} pax
                         </span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
                 # Lançamento Rápido de Itens no Pedido
-                with st.expander("🍽️ Lançar Produto no Pedido", expanded=True):
+                with st.expander("Lançar Produto no Pedido", expanded=True):
                     if not produtos:
                         st.warning("Nenhum produto cadastrado no cardápio.")
                     else:
@@ -292,7 +289,7 @@ def renderizar_painel_salao():
                                 qtd = st.number_input("Quantidade", min_value=1, value=1, step=1)
                             with c_it2:
                                 obs = st.text_input("Observação / Ponto", placeholder="Ex: mal passada, sem cebola")
-                            btn_lancar = st.form_submit_button("➕ Adicionar à Comanda", type="primary", use_container_width=True)
+                            btn_lancar = st.form_submit_button("+ Adicionar à Comanda", type="primary", use_container_width=True)
 
                             if btn_lancar:
                                 prod_obj = opcoes[p_selecionado]
@@ -302,13 +299,13 @@ def renderizar_painel_salao():
                                     quantidade=int(qtd),
                                     observacao=obs.strip()
                                 )
-                                st.success(f"✓ {prod_obj['nome']} adicionado!")
+                                st.success(f"{prod_obj['nome']} adicionado!")
                                 st.rerun()
 
                 # Lista de Itens Consumidos
                 st.markdown("""
                 <div style="margin: 1rem 0 0.5rem 0; font-weight: 700; color: #f8fafc; font-size: 0.95rem;">
-                    📋 Itens Registrados na Comanda
+                    Itens Registrados na Comanda
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -318,7 +315,7 @@ def renderizar_painel_salao():
                     for it in itens:
                         it_col1, it_col2, it_col3, it_col4, it_col5 = st.columns([5, 2.5, 1.5, 1.5, 1.5])
                         with it_col1:
-                            obs_html = f'<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 2px;">💬 {it["observacao"]}</div>' if it.get("observacao") else ''
+                            obs_html = f'<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 2px;">Obs: {it["observacao"]}</div>' if it.get("observacao") else ''
                             st.markdown(f"""
                             <div style="line-height: 1.2;">
                                 <span style="font-weight: 700; color: #ffffff;">{it['quantidade']}x</span>
@@ -330,7 +327,7 @@ def renderizar_painel_salao():
                             st.markdown(f"<div style='font-weight: 700; color: #fbbf24; text-align: right;'>R$ {float(it['subtotal']):.2f}</div>", unsafe_allow_html=True)
                         with it_col3:
                             # Botão para diminuir a quantidade em 1
-                            if st.button("➖", key=f"dec_it_{it['id']}", help="Diminuir 1 unidade", use_container_width=True):
+                            if st.button("-", key=f"dec_it_{it['id']}", help="Diminuir 1 unidade", use_container_width=True):
                                 nova_qtd = it["quantidade"] - 1
                                 if nova_qtd > 0:
                                     data_manager.editar_item_comanda(it["id"], nova_qtd, it["preco_momento"], it.get("observacao", ""))
@@ -339,12 +336,12 @@ def renderizar_painel_salao():
                                 st.rerun()
                         with it_col4:
                             # Botão para aumentar a quantidade em 1
-                            if st.button("➕", key=f"inc_it_{it['id']}", help="Aumentar 1 unidade", use_container_width=True):
+                            if st.button("+", key=f"inc_it_{it['id']}", help="Aumentar 1 unidade", use_container_width=True):
                                 nova_qtd = it["quantidade"] + 1
                                 data_manager.editar_item_comanda(it["id"], nova_qtd, it["preco_momento"], it.get("observacao", ""))
                                 st.rerun()
                         with it_col5:
-                            if st.button("🗑️", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
+                            if st.button("Remover", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
                                 data_manager.remover_item_comanda(it["id"])
                                 st.rerun()
                         st.divider()
@@ -352,7 +349,7 @@ def renderizar_painel_salao():
                 # Painel de Fechamento de Conta
                 st.markdown("""
                 <div style="margin: 1rem 0 0.5rem 0; font-weight: 700; color: #f8fafc; font-size: 0.95rem;">
-                    💳 Fechamento & Pagamento
+                    Fechamento & Pagamento
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -383,15 +380,15 @@ def renderizar_painel_salao():
 
                 c_fc1, c_fc2 = st.columns(2)
                 with c_fc1:
-                    if st.button("✅ Confirmar Pagamento & Liberar Mesa", type="primary", use_container_width=True):
+                    if st.button("Confirmar Pagamento & Liberar Mesa", type="primary", use_container_width=True):
                         data_manager.fechar_comanda(sel_id, total_final, taxa_servico)
                         st.session_state["mesa_selecionada"] = None
                         st.query_params.clear()
-                        st.success("✓ Comanda encerrada e mesa liberada!")
+                        st.success("Comanda encerrada e mesa liberada!")
                         st.rerun()
                 with c_fc2:
-                    with st.popover("❌ Cancelar Comanda", use_container_width=True):
-                        st.caption("⚠️ Operação Crítica")
+                    with st.popover("Cancelar Comanda", use_container_width=True):
+                        st.caption("Operação Crítica")
                         st.write("Esta ação cancelará todos os lançamentos e liberará a mesa física.")
                         confirmar_cancel = st.checkbox("Confirmar cancelamento", key=f"chk_canc_{sel_id}")
                         if st.button("Executar Cancelamento", type="secondary", disabled=not confirmar_cancel, use_container_width=True):

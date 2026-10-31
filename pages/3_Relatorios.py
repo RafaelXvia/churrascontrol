@@ -8,7 +8,6 @@ importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Relatórios e Dashboard - ChurrasControl",
-    page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -57,7 +56,7 @@ with c_p2:
     st.write("")
     pdf_bytes = data_manager.gerar_pdf_bytes(periodo_sel)
     st.download_button(
-        label="📄 Baixar Relatório Oficial em PDF",
+        label="Baixar Relatório Oficial em PDF",
         data=pdf_bytes,
         file_name=f"relatorio_churrascontrol_{periodo_sel}.pdf",
         mime="application/pdf",
@@ -99,7 +98,7 @@ g1, g2 = st.columns(2)
 with g1:
     st.markdown("""
     <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-bottom: 8px;">
-        📈 Evolução Diária da Receita
+        Evolução Diária da Receita
     </div>
     """, unsafe_allow_html=True)
     evolucao = dados.get("evolucao_diaria", [])
@@ -113,7 +112,7 @@ with g1:
 with g2:
     st.markdown("""
     <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-bottom: 8px;">
-        📊 Faturamento por Categoria
+        Faturamento por Categoria
     </div>
     """, unsafe_allow_html=True)
     cat_data = dados.get("vendas_por_categoria", [])
@@ -132,7 +131,7 @@ t1, t2 = st.columns(2)
 with t1:
     st.markdown("""
     <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-bottom: 8px;">
-        🏆 Produtos Mais Vendidos
+        Produtos Mais Vendidos
     </div>
     """, unsafe_allow_html=True)
     top_prods = dados.get("top_produtos", [])
@@ -146,7 +145,7 @@ with t1:
 with t2:
     st.markdown("""
     <div style="font-weight: 700; color: #f8fafc; font-size: 1.05rem; margin-bottom: 8px;">
-        📜 Histórico de Comandas Encerradas
+        Histórico de Comandas Encerradas
     </div>
     """, unsafe_allow_html=True)
     comandas_hist = dados.get("comandas_finalizadas", [])

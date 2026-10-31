@@ -312,8 +312,12 @@ init_db()
 
 # ================= WORKER PERSISTENTE DE SINCRONIZAÇÃO XANO COM COOLDOWN ADAPTATIVO =================
 
+_DISABLE_XANO_ENQUEUE = False
+
 def _enqueue_xano(metodo: str, rota: str, payload: dict = None):
     """Enfileira ação na tabela persistente de sincronização do SQLite sem travar a interface."""
+    if _DISABLE_XANO_ENQUEUE or os.getenv("TESTING_ENV") == "1":
+        return
     try:
         with _db_lock:
             with get_connection() as conn:
@@ -372,11 +376,16 @@ def _xano_sqlite_worker():
             if XANO_API_KEY:
                 headers["Authorization"] = f"Bearer {XANO_API_KEY}"
 
+            is_rate_limited = False
             try:
                 with httpx.Client(timeout=8.0) as client:
                     resp = client.request(tarefa["metodo"], url, json=tarefa["payload"], headers=headers)
                     if resp.status_code in (200, 201, 204):
                         sucesso = True
+                    elif resp.status_code == 429:
+                        is_rate_limited = True
+                        detalhe_erro = f"HTTP 429 (Rate Limit do Xano - aguardando janela de 20s): {resp.text[:150]}"
+                        logger.warning(f"Xano Rate Limit atingido na tarefa {tarefa_id}. Aguardando janela de cota...")
                     else:
                         detalhe_erro = f"HTTP {resp.status_code}: {resp.text[:200]}"
             except Exception as ex:
@@ -393,6 +402,13 @@ def _xano_sqlite_worker():
                         SET status = 'ENVIADO', processado_em = ?, ultimo_erro = NULL
                         WHERE id = ?
                         """, (datetime.now().isoformat(), tarefa_id))
+                    elif is_rate_limited:
+                        # Não consome as tentativas se foi apenas rate limit temporário
+                        conn.execute("""
+                        UPDATE fila_sincronizacao
+                        SET status = 'PENDENTE', ultimo_erro = ?, processado_em = ?
+                        WHERE id = ?
+                        """, (detalhe_erro, datetime.now().isoformat(), tarefa_id))
                     else:
                         novas_tentativas = tarefa["tentativas"] + 1
                         novo_status = "ERRO" if novas_tentativas >= 5 else "PENDENTE"
@@ -402,6 +418,10 @@ def _xano_sqlite_worker():
                         WHERE id = ?
                         """, (novas_tentativas, novo_status, detalhe_erro, datetime.now().isoformat(), tarefa_id))
                     conn.commit()
+
+            if is_rate_limited:
+                # Pausa estratégica para aguardar a expiração da janela de 20s do Xano Free
+                time.sleep(15.0)
 
         except Exception as e:
             logger.error(f"Erro no loop do worker Xano: {e}")
@@ -1088,6 +1108,7 @@ def sincronizar_produtos_xano() -> int:
     """
     Sincroniza o catálogo local do SQLite puxando os dados reais diretamente da tabela PRODUTO do Xano,
     incluindo URLs reais de fotos (Imgur), descrições completas, estoque e preços.
+    Realiza espelhamento fiel (prunando do SQLite produtos que foram excluídos ou não existem no Xano).
     """
     url = f"{XANO_BASE_URL}/produto"
     try:
@@ -1099,6 +1120,7 @@ def sincronizar_produtos_xano() -> int:
             prods_xano = resp.json()
 
         sincronizados = 0
+        valid_codigos = []
         with _db_lock:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -1112,6 +1134,8 @@ def sincronizar_produtos_xano() -> int:
                     if not cod:
                         continue
 
+                    valid_codigos.append(cod)
+
                     desc = str(px.get("descricao") or "").strip()
                     foto = str(px.get("url_imagem") or "").strip()
                     preco = float(px.get("preco") or px.get("preco_unitario") or 10.0)
@@ -1122,25 +1146,38 @@ def sincronizar_produtos_xano() -> int:
                     precisa = 1 if px.get("precisa_produzir") else 0
                     disp = 1 if px.get("disponivel", True) else 0
 
-                    cursor.execute("SELECT id FROM produtos WHERE LOWER(codigo_pdv) = LOWER(?)", (cod,))
+                    xano_id = int(px.get("id"))
+                    cursor.execute("SELECT id FROM produtos WHERE id = ? OR LOWER(codigo_pdv) = LOWER(?)", (xano_id, cod))
                     row = cursor.fetchone()
                     if row:
                         cursor.execute("""
                         UPDATE produtos
-                        SET nome = ?, categoria = ?, preco_unitario = ?,
+                        SET id = ?, codigo_pdv = ?, nome = ?, categoria = ?, preco_unitario = ?,
                             descricao = ?, url_imagem = ?, qtd_disp = ?,
                             precisa_produzir = ?, disponivel = ?
                         WHERE id = ?
-                        """, (nome, categoria, preco, desc, foto, qtd, precisa, disp, row["id"]))
+                        """, (xano_id, cod, nome, categoria, preco, desc, foto, qtd, precisa, disp, row["id"]))
                     else:
                         cursor.execute("""
                         INSERT INTO produtos (
-                            codigo_pdv, nome, categoria, preco_unitario,
+                            id, codigo_pdv, nome, categoria, preco_unitario,
                             descricao, url_imagem, qtd_disp, precisa_produzir, disponivel
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (cod, nome, categoria, preco, desc, foto, qtd, precisa, disp))
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (xano_id, cod, nome, categoria, preco, desc, foto, qtd, precisa, disp))
                     sincronizados += 1
+
+                # Espelhamento fiel: remove produtos do SQLite que não existem mais no Xano
+                if valid_codigos:
+                    placeholders = ",".join("?" for _ in valid_codigos)
+                    cursor.execute(f"DELETE FROM produtos WHERE codigo_pdv NOT IN ({placeholders})", valid_codigos)
+
+                # Reativa tarefas que possam ter sido bloqueadas por rate limit 429
+                cursor.execute("""
+                UPDATE fila_sincronizacao 
+                SET status = 'PENDENTE', tentativas = 0 
+                WHERE status = 'ERRO' AND ultimo_erro LIKE '%429%'
+                """)
 
                 conn.commit()
         logger.info(f"Sincronização com Xano concluída: {sincronizados} produtos atualizados com fotos reais.")
