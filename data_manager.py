@@ -14,7 +14,7 @@ import uuid
 import logging
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import httpx
 
@@ -1189,16 +1189,28 @@ def sincronizar_produtos_xano() -> int:
 # ================= RELATÓRIOS E PDF =================
 
 def obter_dashboard_dados(periodo: str = "7d") -> dict:
-    """Calcula indicadores executivos de faturamento diretamente via queries no SQLite."""
+    """Calcula indicadores executivos de faturamento diretamente via queries no SQLite filtradas por período."""
+    mapa_dias = {"1d": 1, "7d": 7, "15d": 15, "30d": 30}
+    dias = mapa_dias.get(periodo)
+
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-            SELECT id, mesa_id, numero_mesa_historico, data_fechamento, qtd_pessoas, valor_total
-            FROM comandas
-            WHERE status = 'PAGA'
-            ORDER BY data_fechamento DESC
-            """)
+            if dias is not None:
+                data_limite = (datetime.now() - timedelta(days=dias)).isoformat()
+                cursor.execute("""
+                SELECT id, mesa_id, numero_mesa_historico, data_fechamento, qtd_pessoas, valor_total
+                FROM comandas
+                WHERE status = 'PAGA' AND data_fechamento >= ?
+                ORDER BY data_fechamento DESC
+                """, (data_limite,))
+            else:
+                cursor.execute("""
+                SELECT id, mesa_id, numero_mesa_historico, data_fechamento, qtd_pessoas, valor_total
+                FROM comandas
+                WHERE status = 'PAGA'
+                ORDER BY data_fechamento DESC
+                """)
             pagas = cursor.fetchall()
 
             faturamento_total = 0.0

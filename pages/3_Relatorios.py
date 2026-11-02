@@ -48,6 +48,7 @@ with c_ctrl:
             options=list(periodo_labels.keys()),
             format_func=lambda x: periodo_labels[x],
             index=1,
+            key="filtro_periodo_relatorios",
             label_visibility="collapsed"
         )
         if not periodo_sel:
@@ -63,7 +64,7 @@ with c_ctrl:
             type="primary"
         )
 
-# Obter dados consolidados
+# Obter dados consolidados (atualizados dinamicamente pelo período)
 dados = data_manager.obter_dashboard_dados(periodo_sel)
 resumo = dados.get("resumo", {})
 
@@ -76,87 +77,55 @@ ticket_pessoa = float(resumo.get("ticket_por_pessoa", 0.0))
 st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
 # ================= CARDS DE KPIS EXECUTIVOS =================
-st.markdown(f"""
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
-    <!-- KPI 1: Faturamento -->
-    <div style="background: linear-gradient(145deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.75) 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 14px; padding: 16px 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.35);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.05em;">Faturamento Bruto</span>
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
-            </div>
-        </div>
-        <div style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-            R$ {fat_total:,.2f}
-        </div>
-        <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 4px;">
-            Receita total fechada no período
-        </div>
-    </div>
+k1, k2, k3, k4 = st.columns(4)
 
-    <!-- KPI 2: Comandas Fechadas -->
-    <div style="background: linear-gradient(145deg, rgba(56, 189, 248, 0.1) 0%, rgba(15, 23, 42, 0.75) 100%); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 16px 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.35);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em;">Mesas Atendidas</span>
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(56, 189, 248, 0.2); display: flex; align-items: center; justify-content: center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                </svg>
-            </div>
-        </div>
-        <div style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-            {tot_comandas} <span style="font-size: 0.95rem; font-weight: 600; color: #94a3b8;">comandas</span>
-        </div>
-        <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 4px;">
-            Contas liquidadas com sucesso
-        </div>
-    </div>
-
-    <!-- KPI 3: Ticket Médio -->
-    <div style="background: linear-gradient(145deg, rgba(52, 211, 153, 0.1) 0%, rgba(15, 23, 42, 0.75) 100%); border: 1px solid rgba(52, 211, 153, 0.25); border-radius: 14px; padding: 16px 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.35);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: #34d399; text-transform: uppercase; letter-spacing: 0.05em;">Ticket Médio / Mesa</span>
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 211, 153, 0.2); display: flex; align-items: center; justify-content: center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-            </div>
-        </div>
-        <div style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-            R$ {ticket_medio:,.2f}
-        </div>
-        <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 4px;">
-            Gasto médio por mesa fechada
-        </div>
-    </div>
-
-    <!-- KPI 4: Clientes & Ticket/Pessoa -->
-    <div style="background: linear-gradient(145deg, rgba(167, 139, 250, 0.1) 0%, rgba(15, 23, 42, 0.75) 100%); border: 1px solid rgba(167, 139, 250, 0.25); border-radius: 14px; padding: 16px 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.35);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.05em;">Clientes Atendidos</span>
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(167, 139, 250, 0.2); display: flex; align-items: center; justify-content: center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-            </div>
-        </div>
-        <div style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-            {tot_pessoas} <span style="font-size: 0.95rem; font-weight: 600; color: #94a3b8;">pessoas</span>
-        </div>
-        <div style="font-size: 0.76rem; color: #c4b5fd; margin-top: 4px;">
-            Ticket Médio: <strong>R$ {ticket_pessoa:,.2f}</strong> por pessoa
-        </div>
-    </div>
+with k1:
+    st.markdown(f"""<div style="background: linear-gradient(145deg, rgba(245, 158, 11, 0.14) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 14px; padding: 16px 18px; box-shadow: 0 4px 18px rgba(0,0,0,0.35); min-height: 125px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+<span style="font-size: 0.76rem; font-weight: 700; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.05em;">Faturamento Bruto</span>
+<div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
 </div>
-""", unsafe_allow_html=True)
+</div>
+<div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">R$ {fat_total:,.2f}</div>
+<div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">Receita total no período</div>
+</div>""", unsafe_allow_html=True)
+
+with k2:
+    st.markdown(f"""<div style="background: linear-gradient(145deg, rgba(56, 189, 248, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 16px 18px; box-shadow: 0 4px 18px rgba(0,0,0,0.35); min-height: 125px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+<span style="font-size: 0.76rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em;">Mesas Atendidas</span>
+<div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(56, 189, 248, 0.2); display: flex; align-items: center; justify-content: center;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+</div>
+</div>
+<div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">{tot_comandas} <span style="font-size: 0.9rem; font-weight: 600; color: #94a3b8;">mesas</span></div>
+<div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">Comandas finalizadas</div>
+</div>""", unsafe_allow_html=True)
+
+with k3:
+    st.markdown(f"""<div style="background: linear-gradient(145deg, rgba(52, 211, 153, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 14px; padding: 16px 18px; box-shadow: 0 4px 18px rgba(0,0,0,0.35); min-height: 125px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+<span style="font-size: 0.76rem; font-weight: 700; color: #34d399; text-transform: uppercase; letter-spacing: 0.05em;">Ticket Médio</span>
+<div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(52, 211, 153, 0.2); display: flex; align-items: center; justify-content: center;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+</div>
+</div>
+<div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">R$ {ticket_medio:,.2f}</div>
+<div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">Média por mesa atendida</div>
+</div>""", unsafe_allow_html=True)
+
+with k4:
+    st.markdown(f"""<div style="background: linear-gradient(145deg, rgba(167, 139, 250, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 14px; padding: 16px 18px; box-shadow: 0 4px 18px rgba(0,0,0,0.35); min-height: 125px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+<span style="font-size: 0.76rem; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.05em;">Pessoas Atendidas</span>
+<div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(167, 139, 250, 0.2); display: flex; align-items: center; justify-content: center;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+</div>
+</div>
+<div style="font-size: 1.55rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">{tot_pessoas} <span style="font-size: 0.9rem; font-weight: 600; color: #94a3b8;">clientes</span></div>
+<div style="font-size: 0.74rem; color: #c4b5fd; margin-top: 4px;">R$ {ticket_pessoa:,.2f} por pessoa</div>
+</div>""", unsafe_allow_html=True)
 
 # ================= ABAS ESTRUTURADAS (SEM POLUIÇÃO VISUAL) =================
 tab_graficos, tab_produtos, tab_comandas = st.tabs([
