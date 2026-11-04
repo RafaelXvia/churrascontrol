@@ -1,13 +1,9 @@
 import os
 import streamlit as st
-import importlib
 import urllib.parse
 import html
 import data_manager
 import ui_components
-
-importlib.reload(data_manager)
-importlib.reload(ui_components)
 
 def detectar_base_url() -> str:
     """Detecta automaticamente o domínio base (Discloud HTTPS, ambiente de produção ou localhost)."""

@@ -18,12 +18,6 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import httpx
 
-# ReportLab para geração de relatórios PDF
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ChurrasControl")
@@ -38,16 +32,25 @@ _last_xano_call_time = 0.0
 RATE_LIMIT_COOLDOWN = 2.5
 
 def get_connection() -> sqlite3.Connection:
-    """Retorna uma conexão SQLite configurada com WAL, timeout e chaves estrangeiras ativas."""
+    """Retorna uma conexão SQLite configurada com WAL, timeout, limite de cache de 2MB e autocheckpoint."""
     conn = sqlite3.connect(DB_PATH, timeout=25.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA cache_size = -2000;")  # Limite de 2MB para cache de páginas SQLite
+    conn.execute("PRAGMA wal_autocheckpoint = 250;")  # Mantém o arquivo .db-wal compacto (~1MB)
     return conn
 
+_db_initialized = False
+
 def init_db():
-    """Inicializa as tabelas no SQLite com constraints rígidas, índices e migração de colunas."""
+    """Inicializa as tabelas no SQLite com constraints rígidas, índices e migração de colunas (idempotente)."""
+    global _db_initialized
+    if _db_initialized:
+        return
     with _db_lock:
+        if _db_initialized:
+            return
         with get_connection() as conn:
             cursor = conn.cursor()
             
@@ -307,6 +310,7 @@ def init_db():
                     logger.info("Migração legada concluída com sucesso no SQLite.")
                 except Exception as e:
                     logger.error(f"Erro na migração legada: {e}")
+            _db_initialized = True
 
 init_db()
 
@@ -332,6 +336,7 @@ def _enqueue_xano(metodo: str, rota: str, payload: dict = None):
 def _xano_sqlite_worker():
     """Worker em background com Cooldown Adaptativo para eliminar lag sem violar Rate Limit."""
     global _last_xano_call_time
+    _idle_counter = 0
     while True:
         try:
             tarefa = None
@@ -356,8 +361,19 @@ def _xano_sqlite_worker():
                         }
 
             if not tarefa:
-                time.sleep(1.0)
+                _idle_counter += 1
+                if _idle_counter >= 12:  # A cada ~30s de inatividade, consolida o WAL para diminuir memória
+                    _idle_counter = 0
+                    try:
+                        with _db_lock:
+                            with get_connection() as conn:
+                                conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
+                    except Exception:
+                        pass
+                time.sleep(2.5)  # Backoff adaptativo ocioso para poupar CPU e threads
                 continue
+
+            _idle_counter = 0
 
             # COOLDOWN ADAPTATIVO: Se o sistema estava ocioso (> 2.5s), dispara imediatamente (0s de espera)!
             # Se houve chamada recente, aguarda apenas a fração restante para completar 2.5s.
@@ -1284,7 +1300,14 @@ def obter_dashboard_dados(periodo: str = "7d") -> dict:
             }
 
 def gerar_pdf_bytes(periodo: str = "7d") -> bytes:
-    """Gera o documento de relatório executivo em bytes PDF usando ReportLab."""
+    """Gera o documento de relatório executivo em bytes PDF usando ReportLab (Lazy Loaded sob demanda)."""
+    # Lazy Import do ReportLab: Só carrega na memória quando alguém explicitamente pedir o PDF
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
     data = obter_dashboard_dados(periodo)
     mapa_dias = {
         "1d": "Últimas 24 Horas",
@@ -1444,4 +1467,17 @@ def gerar_pdf_bytes(periodo: str = "7d") -> bytes:
 
     doc.build(elements)
     buffer.seek(0)
-    return buffer.getvalue()
+    pdf_output = buffer.getvalue()
+    buffer.close()
+    return pdf_output
+
+# Versão memorizada em cache com descarte de instâncias pesadas de canvas
+try:
+    import streamlit as st
+    @st.cache_data(ttl=180, max_entries=4, show_spinner=False)
+    def gerar_pdf_bytes_cached(periodo: str = "7d") -> bytes:
+        """Gera bytes do PDF com cache TTL para evitar reprocessamento do ReportLab em cada rerun."""
+        return gerar_pdf_bytes(periodo)
+except Exception:
+    def gerar_pdf_bytes_cached(periodo: str = "7d") -> bytes:
+        return gerar_pdf_bytes(periodo)

@@ -1,11 +1,7 @@
 import streamlit as st
-import importlib
 import html
 import data_manager
 import ui_components
-
-importlib.reload(data_manager)
-importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="Cardápio Digital — ChurrasControl",

@@ -16,11 +16,8 @@ if sys.platform == "win32":
 
 import streamlit as st
 from datetime import datetime
-import importlib
 import data_manager
-importlib.reload(data_manager)
 import ui_components
-importlib.reload(ui_components)
 
 st.set_page_config(
     page_title="ChurrasControl - Painel Operacional",
