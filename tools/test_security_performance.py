@@ -80,6 +80,10 @@ def run_tests():
 
     # Fechar comanda e liberar mesa
     data_manager.fechar_comanda(comanda1_id, valor_final=10.0, taxa_servico=False)
+    with data_manager.get_connection() as c:
+        c.execute("DELETE FROM comandas WHERE id = ?", (comanda1_id,))
+        c.execute("DELETE FROM fila_sincronizacao")
+        c.commit()
     print("  [PASS] Comanda finalizada e mesa liberada.")
 
     # 4. Testar índices de performance no SQLite

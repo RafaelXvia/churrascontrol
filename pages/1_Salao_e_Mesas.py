@@ -8,6 +8,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 1. Guarda de segurança e autenticação (Caixa e Gerente têm acesso)
+usuario_logado = ui_components.exigir_autenticacao()
+
 # Navbar superior unificada
 ui_components.render_navbar(active_tab="salao")
 
@@ -47,16 +50,16 @@ def dialog_abrir_mesa():
         if st.button("Cancelar", use_container_width=True, key="btn_cancel_dlg"):
             st.rerun()
 
-import streamlit.components.v1 as components
+from datetime import datetime
 
-@st.fragment(run_every=60)
+@st.fragment(run_every=15)
 def renderizar_painel_salao():
     # Operações locais instantâneas
     mesas = data_manager.listar_mesas()
     produtos = data_manager.listar_produtos()
 
-    # Cabeçalho da Página com Timer Regressivo de 60s
-    col_head_title, col_head_timer = st.columns([3, 2])
+    # Cabeçalho da Página com Indicador Nativo de Sincronização Sincronizado
+    col_head_title, col_head_timer = st.columns([3, 2], vertical_alignment="center")
     with col_head_title:
         st.markdown("""
         <div style="margin-bottom: 0.5rem;">
@@ -70,66 +73,18 @@ def renderizar_painel_salao():
         """, unsafe_allow_html=True)
 
     with col_head_timer:
-        components.html("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <style>
-        body {
-            margin: 0; padding: 0; background: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex; justify-content: flex-end; align-items: center; height: 100%; overflow: hidden;
-        }
-        .timer-badge {
-            background: rgba(34, 197, 94, 0.14);
-            border: 1px solid rgba(34, 197, 94, 0.45);
-            border-radius: 20px;
-            padding: 6px 14px;
-            font-size: 0.82rem;
-            color: #86efac;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 700;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-        }
-        .pulse-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #22c55e; display: inline-block; box-shadow: 0 0 8px #22c55e;
-        }
-        .countdown-val {
-            color: #ffffff; font-weight: 900; font-size: 0.95rem;
-            background: rgba(0, 0, 0, 0.45);
-            padding: 3px 10px; border-radius: 8px; min-width: 38px; text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-        </style>
-        </head>
-        <body>
-        <div class="timer-badge">
-            <span class="pulse-dot"></span>
-            <span>Atualizando em:</span>
-            <span id="timer_num" class="countdown-val">60s</span>
-        </div>
-        <script>
-        let count = 60;
-        const el = document.getElementById("timer_num");
-        const interval = setInterval(() => {
-            count--;
-            if (count > 0) {
-                if (el) el.innerText = count + "s";
-            } else {
-                if (el) el.innerText = "Atualizando...";
-                setTimeout(() => {
-                    count = 60;
-                    if (el) el.innerText = "60s";
-                }, 1500);
-            }
-        }, 1000);
-        </script>
-        </body>
-        </html>
-        """, height=48)
+        agora_str = datetime.now().strftime("%H:%M:%S")
+        c_sync_info, c_sync_btn = st.columns([2, 1], vertical_alignment="center")
+        with c_sync_info:
+            st.markdown(f"""
+            <div style="text-align: right; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 10px; padding: 6px 12px; font-size: 0.78rem; color: #86efac; display: inline-flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e;"></span>
+                <span>Auto-refresh (15s) • Leitura: <b>{agora_str}</b></span>
+            </div>
+            """, unsafe_allow_html=True)
+        with c_sync_btn:
+            if st.button("🔄 Atualizar", key="btn_manual_refresh_salao", use_container_width=True, help="Recarregar salão agora"):
+                st.rerun()
 
     # Layout em duas colunas responsivas: Salão (7) e Comanda (5)
     col_salao, col_comanda = st.columns([7, 5], gap="medium")
@@ -170,7 +125,8 @@ def renderizar_painel_salao():
                         is_selected = (st.session_state.get("mesa_selecionada") == m["comanda_id"])
                         card_class = "cc-mesa-card cc-mesa-card-active" if is_selected else "cc-mesa-card"
                         active_style = "border-color: #f59e0b !important; box-shadow: 0 12px 28px -6px rgba(245, 158, 11, 0.35) !important;" if is_selected else ""
-                        badge_status = '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">OCUPADA</span>'
+                        is_ocupada = (m.get("status") == "OCUPADA")
+                        badge_status = '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">OCUPADA</span>' if is_ocupada else '<span style="background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">LIVRE</span>'
                         sel_indicator = '<span style="color: #f59e0b; font-size: 0.75rem; font-weight: 700; margin-left: 6px;">SELECIONADA</span>' if is_selected else ''
                         action_text = "Comanda Selecionada" if is_selected else "Ver comanda"
 

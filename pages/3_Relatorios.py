@@ -10,6 +10,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 1. Guarda de segurança restrita estritamente ao perfil 'gerente'
+usuario_logado = ui_components.verificar_permissao_acesso(["gerente"])
+
 # Injetar tema e navbar unificada
 ui_components.inject_custom_theme()
 ui_components.render_navbar(active_tab="relatorios")

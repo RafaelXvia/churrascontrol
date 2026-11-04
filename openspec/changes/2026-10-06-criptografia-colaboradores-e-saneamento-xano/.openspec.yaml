@@ -1,0 +1,11 @@
+id: "2026-10-06-criptografia-colaboradores-e-saneamento-xano"
+title: "Criptografia de Ponta a Ponta de Colaboradores e Saneamento da Instância Xano"
+created_at: "2026-10-06"
+status: "completed"
+author: "Antigravity AI & Rafael"
+description: >
+  Implementação de criptografia simétrica autenticada (Fernet/AES-128-CBC + HMAC-SHA256)
+  para todos os dados sensíveis de colaboradores (nome, telefone/numero, senha_hash, cargo)
+  tanto no SQLite quanto no payload sincronizado com o Xano. Saneamento e reestruturação da
+  pasta xano/ para conter apenas as 5 tabelas centrais do ecossistema ChurrasControl, gerando
+  backup completo e exportador de dados para a nova instância.

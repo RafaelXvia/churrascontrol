@@ -1,0 +1,11 @@
+id: "2026-10-06-estabilizacao-ux-e-sistema-autenticacao"
+title: "Estabilização de UX (Navbar, Carrinho, Cards, Auto-Refresh) e Sistema de Autenticação RBAC com Primeiro Acesso"
+created_at: "2026-10-06"
+status: "completed"
+author: "Antigravity AI & Rafael"
+description: >
+  Correção de bugs críticos de interface (navbar intermitente por sobreposição de stHeader,
+  falha de renderização de pratos com valores nulos no carrinho, remoção de botão duplicado
+  em prol do card 100% clicável, sincronização do auto-refresh no salão) e introdução
+  do sistema de autenticação, RBAC (Gerente vs Caixa), primeiro acesso com troca obrigatória
+  de senha e gestão de colaboradores no SQLite e Xano.

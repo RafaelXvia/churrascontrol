@@ -414,16 +414,18 @@ def modal_carrinho_mesa():
                 # Linha 3: Quantidade e Subtotal lado a lado
                 c_sub_qtd, c_sub_tot = st.columns([1, 1])
                 with c_sub_qtd:
+                    val_atual = max(1, min(100, int(item.get("quantidade", 1))))
                     nova_qtd = st.number_input(
                         "Quantidade", 
                         min_value=1, 
-                        max_value=20, 
-                        value=int(item["quantidade"]), 
-                        key=f"cart_qtd_{idx}"
+                        max_value=100, 
+                        value=val_atual, 
+                        key=f"cart_qtd_{item['produto_id']}_{idx}"
                     )
                     item["quantidade"] = nova_qtd
                 with c_sub_tot:
-                    sub_item = nova_qtd * item["preco_unitario"]
+                    preco_unit = float(item.get("preco_unitario", 0.0))
+                    sub_item = nova_qtd * preco_unit
                     subtotal_novos += sub_item
                     st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='text-align:right; font-weight:800; color:#ffb300; font-size:1.05rem;'>R$ {sub_item:.2f}</div>", unsafe_allow_html=True)
@@ -487,40 +489,52 @@ def modal_carrinho_mesa():
 # ================= MODAL DE ADIÇÃO RÁPIDA AO CLICAR NO CARD =================
 @st.dialog("Adicionar ao Pedido")
 def modal_adicionar_prato(produto: dict):
+    img_url = produto.get("url_imagem") or "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
+    nome_prod = html.escape(str(produto.get("nome") or "Prato"))
+    desc_prod = html.escape(str(produto.get("descricao") or ""))
+    preco_unit = float(produto.get("preco_unitario") or 0.0)
+
     st.markdown(f"""
     <div style="display:flex; gap:14px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-        <img src="{produto['url_imagem']}" style="width:78px; height:78px; border-radius:12px; object-fit:cover;"/>
+        <img src="{img_url}" style="width:78px; height:78px; border-radius:12px; object-fit:cover;"/>
         <div style="min-width:0; flex:1;">
-            <h3 style="margin:0; color:#fff; font-size:1.15rem; line-height:1.2;">{produto['nome']}</h3>
-            <span style="color:#ffb300; font-weight:800; font-size:1.2rem;">R$ {float(produto['preco_unitario']):.2f}</span>
+            <h3 style="margin:0; color:#fff; font-size:1.15rem; line-height:1.2;">{nome_prod}</h3>
+            <span style="color:#ffb300; font-weight:800; font-size:1.2rem;">R$ {preco_unit:.2f}</span>
         </div>
     </div>
-    <p style="color:#94a3b8; font-size:0.86rem; line-height:1.35; margin-bottom:12px;">{produto.get('descricao', '')}</p>
+    <p style="color:#94a3b8; font-size:0.86rem; line-height:1.35; margin-bottom:12px;">{desc_prod}</p>
     """, unsafe_allow_html=True)
 
-    saldo_disp = max(1, produto.get("qtd_disp") or 10)
-    qtd = st.number_input("Quantidade Desejada", min_value=1, max_value=saldo_disp, value=1)
+    saldo_disp = max(1, int(produto.get("qtd_disp") or 10))
+    qtd = st.number_input("Quantidade Desejada", min_value=1, max_value=max(1, saldo_disp), value=1)
     obs = st.text_input("Alguma preferência ou observação?", placeholder="Ex: Carne ao ponto, sem cebola, etc.")
 
-    if st.button("Adicionar à Pré-Comanda", type="primary", use_container_width=True):
-        achou = False
-        for it in st.session_state[session_key]:
-            if it["produto_id"] == produto["id"]:
-                it["quantidade"] += qtd
-                if obs:
-                    it["observacao"] = (it.get("observacao", "") + " | " + obs).strip(" | ")
-                achou = True
-                break
-        if not achou:
-            st.session_state[session_key].append({
-                "produto_id": produto["id"],
-                "nome": produto["nome"],
-                "preco_unitario": float(produto["preco_unitario"]),
-                "quantidade": qtd,
-                "observacao": obs
-            })
-        st.toast(f"{produto['nome']} adicionado ao carrinho!", icon=None)
-        st.rerun()
+    c_b1, c_b2 = st.columns([2, 1])
+    with c_b1:
+        if st.button("Adicionar à Pré-Comanda", type="primary", use_container_width=True):
+            achou = False
+            for it in st.session_state[session_key]:
+                if it["produto_id"] == produto["id"]:
+                    it["quantidade"] += qtd
+                    if obs:
+                        it["observacao"] = (it.get("observacao", "") + " | " + obs).strip(" | ")
+                    achou = True
+                    break
+            if not achou:
+                st.session_state[session_key].append({
+                    "produto_id": produto["id"],
+                    "nome": produto["nome"],
+                    "preco_unitario": preco_unit,
+                    "quantidade": qtd,
+                    "observacao": obs
+                })
+            st.session_state["modal_prato_selecionado"] = None
+            st.toast(f"{produto['nome']} adicionado ao carrinho!", icon=None)
+            st.rerun()
+    with c_b2:
+        if st.button("Voltar", use_container_width=True):
+            st.session_state["modal_prato_selecionado"] = None
+            st.rerun()
 
 # ================= TELA PRINCIPAL DO CLIENTE =================
 
@@ -569,14 +583,17 @@ cat_selecionada = st.pills("Filtrar por Categoria:", categorias, default="Todas"
 # Carrega produtos cadastrados
 todos_produtos = data_manager.listar_produtos()
 
-# Filtragem de produtos
+# Filtragem de produtos com proteção robusta contra valores nulos
 produtos_filtrados = []
 for p in todos_produtos:
-    if cat_selecionada != "Todas" and p.get("categoria", "").lower() != cat_selecionada.lower():
+    nome_p = str(p.get("nome") or "")
+    cat_p = str(p.get("categoria") or "")
+    desc_p = str(p.get("descricao") or "")
+    if cat_selecionada != "Todas" and cat_p.lower() != cat_selecionada.lower():
         continue
     if termo_busca:
         termo = termo_busca.lower()
-        if termo not in p.get("nome", "").lower() and termo not in p.get("categoria", "").lower() and termo not in p.get("descricao", "").lower():
+        if termo not in nome_p.lower() and termo not in cat_p.lower() and termo not in desc_p.lower():
             continue
     produtos_filtrados.append(p)
 
@@ -614,29 +631,32 @@ for i in range(0, len(produtos_filtrados), cols_per_row):
             st.markdown(f"""
             <div class="client-card {'card-esgotado' if esta_esgotado else ''}" style="{'opacity: 0.55; cursor: not-allowed !important;' if esta_esgotado else 'cursor: pointer;'}">
                 <div class="client-img-wrap">
-                    <img class="client-img" src="{img_url}" alt="{html.escape(prod['nome'])}"/>
+                    <img class="client-img" src="{img_url}" alt="{html.escape(str(prod.get('nome') or 'Prato'))}"/>
                     {badge_estoque}
-                    <span class="badge-cat">{html.escape(prod.get('categoria', 'Geral'))}</span>
+                    <span class="badge-cat">{html.escape(str(prod.get('categoria') or 'Geral'))}</span>
                 </div>
                 <div class="client-content">
-                    <div class="client-title">{html.escape(prod['nome'])}</div>
-                    <div class="client-desc">{html.escape(prod.get('descricao', ''))}</div>
+                    <div class="client-title">{html.escape(str(prod.get('nome') or ''))}</div>
+                    <div class="client-desc">{html.escape(str(prod.get('descricao') or ''))}</div>
                     <div class="client-footer">
-                        <span class="client-price">R$ {float(prod['preco_unitario']):.2f}</span>
-                        <span class="client-action-hint">{'Indisponível' if esta_esgotado else 'Pedir'}</span>
+                        <span class="client-price">R$ {float(prod.get('preco_unitario') or 0.0):.2f}</span>
+                        <span class="client-action-hint">{'Indisponível' if esta_esgotado else '👉 Toque no card para pedir'}</span>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Botão de Ação Integrado (Acoplado à base do card)
-            if esta_esgotado:
-                st.button("Indisponível", key=f"btn_esgotado_{prod['id']}", disabled=True, use_container_width=True)
-            else:
-                if st.button("Adicionar ao Pedido", key=f"btn_choose_{prod['id']}", use_container_width=True):
-                    modal_adicionar_prato(prod)
-            
-            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            # Gatilho de clique acoplado (invisível ao usuário, acionado pelo toque no card)
+            if not esta_esgotado:
+                if st.button("Pedir", key=f"btn_choose_{prod['id']}", help=f"Selecionar {prod.get('nome')}"):
+                    st.session_state["modal_prato_selecionado"] = prod
+                    st.rerun()
+
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+# Renderiza o diálogo se houver produto selecionado
+if st.session_state.get("modal_prato_selecionado"):
+    modal_adicionar_prato(st.session_state["modal_prato_selecionado"])
 
 # JavaScript Delegado para que tocar no card acione o botão daquela coluna
 st.html("""

@@ -12,25 +12,51 @@ query produto verb=POST {
     bool? disponivel
   }
   stack {
-    db.add PRODUTO {
-      enforce_hidden_fields = false
-      data = {
-        created_at       : "now",
-        codigo_pdv       : $input.codigo_pdv,
-        nome             : $input.nome,
-        categoria        : $input.categoria,
-        preco            : $input.preco,
-        descricao        : $input.descricao,
-        qtd_disp         : $input.qtd_disp,
-        url_imagem       : $input.url_imagem,
-        precisa_produzir : $input.precisa_produzir,
-        disponivel       : $input.disponivel
+    db.query PRODUTO {
+      where  = ($db.PRODUTO.codigo_pdv == $input.codigo_pdv || $db.PRODUTO.nome == $input.nome)
+      return = {type: "single"}
+    } as $existente
+
+    conditional {
+      if ($existente != null) {
+        db.patch PRODUTO {
+          field_name  = "id"
+          field_value = $existente.id
+          data = {
+            codigo_pdv       : $input.codigo_pdv,
+            nome             : $input.nome,
+            categoria        : $input.categoria,
+            preco            : $input.preco,
+            descricao        : $input.descricao,
+            qtd_disp         : $input.qtd_disp,
+            url_imagem       : $input.url_imagem,
+            precisa_produzir : $input.precisa_produzir,
+            disponivel       : $input.disponivel
+          }
+        } as $prod_salvo
       }
-    } as $novo_produto
+      else {
+        db.add PRODUTO {
+          enforce_hidden_fields = false
+          data = {
+            created_at       : "now",
+            codigo_pdv       : $input.codigo_pdv,
+            nome             : $input.nome,
+            categoria        : $input.categoria,
+            preco            : $input.preco,
+            descricao        : $input.descricao,
+            qtd_disp         : $input.qtd_disp,
+            url_imagem       : $input.url_imagem,
+            precisa_produzir : $input.precisa_produzir,
+            disponivel       : $input.disponivel
+          }
+        } as $prod_salvo
+      }
+    }
   }
   response = {
-    status: "ok",
-    id    : $novo_produto.id
+    status : "ok",
+    id     : $prod_salvo.id
   }
   guid = "XjFT0cXsioCt2C8ppiLCbrdIsJU"
 }

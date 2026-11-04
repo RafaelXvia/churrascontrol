@@ -23,6 +23,7 @@ TEST_FILES = [
     "test_security_performance.py",
     "test_cardapio_delivery.py",
     "test_cardapio_cliente_qrcode.py",
+    "test_autenticacao_rbac.py",
 ]
 
 def main():
@@ -79,6 +80,12 @@ def main():
     print("=" * 70)
 
     if falhas == 0:
+        # Normalização de segurança para garantir banco 100% limpo com apenas 15 produtos e 1 gerente
+        try:
+            import clean_sqlite
+            clean_sqlite.main()
+        except Exception:
+            pass
         print("[SUCESSO] Todos os testes passaram com 100% de aproveitamento.")
         sys.exit(0)
     else:

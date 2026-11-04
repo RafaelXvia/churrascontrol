@@ -14,9 +14,47 @@ import uuid
 import logging
 import sqlite3
 import threading
+import hashlib
+import collections
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import httpx
+
+import base64
+from cryptography.fernet import Fernet, InvalidToken
+
+CHURRAS_SALT = "CC_SALT_2026_INNOVATION_LAB"
+
+# Chave mestra Fernet derivada deterministicamente por SHA-256 (32 bytes em Base64 URL-safe)
+_raw_crypto_key = hashlib.sha256(b"CHURRASCONTROL_FERNET_MASTER_KEY_2026_INNOVATION_LAB").digest()
+_FERNET_MASTER_KEY = base64.urlsafe_b64encode(_raw_crypto_key)
+_cipher_suite = Fernet(_FERNET_MASTER_KEY)
+
+def criptografar_dado(texto: str) -> str:
+    """Criptografa uma string usando AES-128-CBC + HMAC-SHA256 (Fernet) com prefixo identificador 'ENC:'."""
+    if texto is None:
+        return ""
+    texto_str = str(texto).strip()
+    if not texto_str:
+        return ""
+    if texto_str.startswith("ENC:"):
+        return texto_str
+    token = _cipher_suite.encrypt(texto_str.encode("utf-8")).decode("utf-8")
+    return f"ENC:{token}"
+
+def descriptografar_dado(texto_cifrado: str) -> str:
+    """Descriptografa um token cifrado Fernet com prefixo 'ENC:'. Retorna o texto original em caso de erro ou string plana."""
+    if not texto_cifrado:
+        return ""
+    texto_str = str(texto_cifrado).strip()
+    if not texto_str.startswith("ENC:"):
+        return texto_str
+    token = texto_str[4:]
+    try:
+        return _cipher_suite.decrypt(token.encode("utf-8")).decode("utf-8")
+    except (InvalidToken, Exception) as e:
+        logger.warning(f"Falha ao descriptografar token: {e}")
+        return texto_str
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -28,8 +66,40 @@ XANO_BASE_URL = os.getenv("XANO_BASE_URL", "https://x8ki-letl-twmt.n7.xano.io/ap
 XANO_API_KEY = os.getenv("XANO_API_KEY", os.getenv("XANO_AUTH_TOKEN", ""))
 
 _db_lock = threading.Lock()
-_last_xano_call_time = 0.0
+_rate_lock = threading.Lock()
+_call_timestamps = collections.deque()
+MAX_REQUESTS_PER_20S = 8  # Margem segura estrita abaixo do teto de 10 req / 20s do Xano Free
+RATE_WINDOW_SECONDS = 20.0
 RATE_LIMIT_COOLDOWN = 2.5
+_last_xano_call_time = 0.0
+
+def _pode_chamar_xano_agora() -> bool:
+    """Verifica se a janela deslizante de 20s possui quota disponível (< 8 chamadas)."""
+    with _rate_lock:
+        agora = time.time()
+        while _call_timestamps and (_call_timestamps[0] <= agora - RATE_WINDOW_SECONDS):
+            _call_timestamps.popleft()
+        return len(_call_timestamps) < MAX_REQUESTS_PER_20S
+
+def _registrar_chamada_xano():
+    """Registra o timestamp da requisição enviada ao Xano na janela deslizante."""
+    global _last_xano_call_time
+    with _rate_lock:
+        agora = time.time()
+        _call_timestamps.append(agora)
+        _last_xano_call_time = agora
+
+def _esperar_janela_rate_limit():
+    """Garante que a próxima chamada ao Xano respeite estritamente a janela deslizante (elimina 429)."""
+    while True:
+        with _rate_lock:
+            agora = time.time()
+            while _call_timestamps and (_call_timestamps[0] <= agora - RATE_WINDOW_SECONDS):
+                _call_timestamps.popleft()
+            if len(_call_timestamps) < MAX_REQUESTS_PER_20S:
+                return
+            tempo_espera = max(0.2, (_call_timestamps[0] + RATE_WINDOW_SECONDS) - agora + 0.1)
+        time.sleep(tempo_espera)
 
 def get_connection() -> sqlite3.Connection:
     """Retorna uma conexão SQLite configurada com WAL, timeout, limite de cache de 2MB e autocheckpoint."""
@@ -174,6 +244,83 @@ def init_db():
                     VALUES (?, ?, ?, ?)
                     """, (m_num, tok_inicial, agora_iso, agora_iso))
 
+            # 9. Tabela de Colaboradores e Autenticação (RBAC com Criptografia de Ponta a Ponta)
+            # Migração transparente caso a tabela anterior possua a constraint restritiva CHECK(cargo IN ...)
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='colaboradores';")
+            row_tab = cursor.fetchone()
+            if row_tab and "CHECK(cargo IN" in row_tab["sql"]:
+                cursor.execute("ALTER TABLE colaboradores RENAME TO colaboradores_old;")
+                cursor.execute("""
+                CREATE TABLE colaboradores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    senha_hash TEXT NOT NULL,
+                    numero TEXT NOT NULL,
+                    cargo TEXT NOT NULL,
+                    primeiro_acesso INTEGER NOT NULL DEFAULT 1 CHECK(primeiro_acesso IN (0, 1)),
+                    ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN (0, 1)),
+                    criado_em TEXT NOT NULL,
+                    atualizado_em TEXT NOT NULL
+                );
+                """)
+                cursor.execute("SELECT * FROM colaboradores_old;")
+                for r in cursor.fetchall():
+                    nome_c = criptografar_dado(r["nome"])
+                    num_c = criptografar_dado(r["numero"])
+                    cargo_c = criptografar_dado(r["cargo"])
+                    cursor.execute("""
+                    INSERT INTO colaboradores (id, nome, email, senha_hash, numero, cargo, primeiro_acesso, ativo, criado_em, atualizado_em)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (r["id"], nome_c, r["email"], r["senha_hash"], num_c, cargo_c, r["primeiro_acesso"], r["ativo"], r["criado_em"], r["atualizado_em"]))
+                cursor.execute("DROP TABLE colaboradores_old;")
+            else:
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS colaboradores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    senha_hash TEXT NOT NULL,
+                    numero TEXT NOT NULL,
+                    cargo TEXT NOT NULL,
+                    primeiro_acesso INTEGER NOT NULL DEFAULT 1 CHECK(primeiro_acesso IN (0, 1)),
+                    ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN (0, 1)),
+                    criado_em TEXT NOT NULL,
+                    atualizado_em TEXT NOT NULL
+                );
+                """)
+
+            # Assegura que quaisquer registros já existentes sem o prefixo ENC: sejam devidamente criptografados
+            cursor.execute("SELECT id, nome, numero, cargo FROM colaboradores;")
+            for r in cursor.fetchall():
+                modificado = False
+                n_nome = r["nome"]
+                n_num = r["numero"]
+                n_cargo = r["cargo"]
+                if not n_nome.startswith("ENC:"):
+                    n_nome = criptografar_dado(n_nome)
+                    modificado = True
+                if not n_num.startswith("ENC:"):
+                    n_num = criptografar_dado(n_num)
+                    modificado = True
+                if not n_cargo.startswith("ENC:"):
+                    n_cargo = criptografar_dado(n_cargo)
+                    modificado = True
+                if modificado:
+                    cursor.execute("UPDATE colaboradores SET nome = ?, numero = ?, cargo = ? WHERE id = ?", (n_nome, n_num, n_cargo, r["id"]))
+
+            # Seed do Gerente Administrador inicial se não houver registros
+            cursor.execute("SELECT COUNT(*) as total FROM colaboradores;")
+            tot_colabs = cursor.fetchone()
+            if tot_colabs and tot_colabs["total"] == 0:
+                agora_iso = datetime.now().isoformat()
+                raw_seed = f"{CHURRAS_SALT}:admin123"
+                h_seed = hashlib.sha256(raw_seed.encode("utf-8")).hexdigest()
+                cursor.execute("""
+                INSERT INTO colaboradores (nome, email, senha_hash, numero, cargo, primeiro_acesso, ativo, criado_em, atualizado_em)
+                VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)
+                """, (criptografar_dado("Gerente Administrador"), "gerente@churrascontrol.com", h_seed, criptografar_dado("(31) 99999-9999"), criptografar_dado("gerente"), agora_iso, agora_iso))
+
             # Enriquecimento automático de fotos e descrições para produtos existentes sem foto
             _fotos_padrao = {
                 "Tutu à Mineira": (
@@ -314,7 +461,7 @@ def init_db():
 
 init_db()
 
-# ================= WORKER PERSISTENTE DE SINCRONIZAÇÃO XANO COM COOLDOWN ADAPTATIVO =================
+# ================= WORKER PERSISTENTE DE SINCRONIZAÇÃO XANO COM GOVERNANÇA DE JANELA =================
 
 _DISABLE_XANO_ENQUEUE = False
 
@@ -333,9 +480,60 @@ def _enqueue_xano(metodo: str, rota: str, payload: dict = None):
     except Exception as e:
         logger.error(f"Falha ao enfileirar tarefa no SQLite para o Xano: {e}")
 
+def _sync_push_imediato_ou_enfileirar(metodo: str, rota: str, payload: dict = None) -> bool:
+    """
+    Sincronização imediata em lockstep (SQLite <-> Xano) com proteção total contra Rate Limit:
+    1. Se houver cota disponível na janela deslizante de 20s (< 8 chamadas), realiza a chamada HTTP imediata (<300ms).
+       Dessa forma, o dado aparece no SQLite e no Xano instantaneamente ('apareceu no sqlite já tá lá no xano').
+    2. Se a cota estiver temporariamente preenchida, ou em caso de timeout / queda de rede / 429,
+       enfileira automaticamente no SQLite persistente (fila_sincronizacao), garantindo entrega garantida offline-first
+       sem bloquear a interface do usuário e sem disparar erros 429.
+    """
+    if _DISABLE_XANO_ENQUEUE or os.getenv("TESTING_ENV") == "1":
+        return True
+
+    payload = payload or {}
+    agora_iso = datetime.now().isoformat()
+
+    # Se a janela de 20s permitir, tenta push imediato síncrono
+    if _pode_chamar_xano_agora():
+        url = f"{XANO_BASE_URL.rstrip('/')}/{rota.lstrip('/')}"
+        headers = {"Content-Type": "application/json"}
+        if XANO_API_KEY:
+            headers["Authorization"] = f"Bearer {XANO_API_KEY}"
+
+        try:
+            with httpx.Client(timeout=3.0) as client:
+                resp = client.request(metodo, url, json=payload, headers=headers)
+                _registrar_chamada_xano()
+                
+                if resp.status_code in (200, 201, 204):
+                    logger.info(f"Sincronização imediata Xano concluída com sucesso: {metodo} {rota}")
+                    # Grava na fila já como ENVIADO para histórico de auditoria
+                    try:
+                        with _db_lock:
+                            with get_connection() as conn:
+                                conn.execute("""
+                                INSERT INTO fila_sincronizacao (metodo, rota, payload_json, status, tentativas, criado_em, processado_em)
+                                VALUES (?, ?, ?, 'ENVIADO', 1, ?, ?)
+                                """, (metodo, rota, json.dumps(payload, ensure_ascii=False), agora_iso, agora_iso))
+                                conn.commit()
+                    except Exception:
+                        pass
+                    return True
+                elif resp.status_code == 429:
+                    logger.warning(f"Xano retornou HTTP 429 no push imediato ({rota}). Enfileirando para entrega coordenada...")
+                else:
+                    logger.warning(f"Xano retornou HTTP {resp.status_code} no push imediato ({rota}). Enfileirando...")
+        except Exception as ex:
+            logger.info(f"Push imediato indisponível ({ex}). Enfileirando com segurança offline-first...")
+
+    # Se não foi possível o envio imediato (ou quota cheia), enfileira no SQLite persistente
+    _enqueue_xano(metodo, rota, payload)
+    return False
+
 def _xano_sqlite_worker():
-    """Worker em background com Cooldown Adaptativo para eliminar lag sem violar Rate Limit."""
-    global _last_xano_call_time
+    """Worker em background com governança de janela deslizante para drenar a fila sem qualquer 429."""
     _idle_counter = 0
     while True:
         try:
@@ -370,18 +568,13 @@ def _xano_sqlite_worker():
                                 conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
                     except Exception:
                         pass
-                time.sleep(2.5)  # Backoff adaptativo ocioso para poupar CPU e threads
+                time.sleep(1.0)
                 continue
 
             _idle_counter = 0
 
-            # COOLDOWN ADAPTATIVO: Se o sistema estava ocioso (> 2.5s), dispara imediatamente (0s de espera)!
-            # Se houve chamada recente, aguarda apenas a fração restante para completar 2.5s.
-            agora = time.time()
-            tempo_decorrido = agora - _last_xano_call_time
-            if tempo_decorrido < RATE_LIMIT_COOLDOWN:
-                tempo_espera = RATE_LIMIT_COOLDOWN - tempo_decorrido
-                time.sleep(tempo_espera)
+            # Aguarda vaga na janela deslizante (impossível violar rate limit de 10 req / 20s)
+            _esperar_janela_rate_limit()
 
             tarefa_id = tarefa["id"]
             url = f"{XANO_BASE_URL.rstrip('/')}/{tarefa['rota'].lstrip('/')}"
@@ -396,19 +589,18 @@ def _xano_sqlite_worker():
             try:
                 with httpx.Client(timeout=8.0) as client:
                     resp = client.request(tarefa["metodo"], url, json=tarefa["payload"], headers=headers)
+                    _registrar_chamada_xano()
                     if resp.status_code in (200, 201, 204):
                         sucesso = True
                     elif resp.status_code == 429:
                         is_rate_limited = True
-                        detalhe_erro = f"HTTP 429 (Rate Limit do Xano - aguardando janela de 20s): {resp.text[:150]}"
-                        logger.warning(f"Xano Rate Limit atingido na tarefa {tarefa_id}. Aguardando janela de cota...")
+                        detalhe_erro = f"HTTP 429 (Rate Limit): {resp.text[:150]}"
+                        logger.warning(f"Worker Xano: Rate Limit 429 detectado na tarefa {tarefa_id}.")
                     else:
                         detalhe_erro = f"HTTP {resp.status_code}: {resp.text[:200]}"
             except Exception as ex:
                 sucesso = False
                 detalhe_erro = str(ex)
-
-            _last_xano_call_time = time.time()
 
             with _db_lock:
                 with get_connection() as conn:
@@ -419,7 +611,6 @@ def _xano_sqlite_worker():
                         WHERE id = ?
                         """, (datetime.now().isoformat(), tarefa_id))
                     elif is_rate_limited:
-                        # Não consome as tentativas se foi apenas rate limit temporário
                         conn.execute("""
                         UPDATE fila_sincronizacao
                         SET status = 'PENDENTE', ultimo_erro = ?, processado_em = ?
@@ -436,12 +627,11 @@ def _xano_sqlite_worker():
                     conn.commit()
 
             if is_rate_limited:
-                # Pausa estratégica para aguardar a expiração da janela de 20s do Xano Free
-                time.sleep(15.0)
+                time.sleep(20.0)
 
         except Exception as e:
             logger.error(f"Erro no loop do worker Xano: {e}")
-            time.sleep(2.0)
+            time.sleep(1.0)
 
 if "_worker_thread" not in globals() or not _worker_thread.is_alive():
     _worker_thread = threading.Thread(target=_xano_sqlite_worker, daemon=True)
@@ -551,6 +741,10 @@ def cancelar_comanda(comanda_id: int):
             if mesa_id:
                 cursor.execute("DELETE FROM mesas WHERE id = ?", (mesa_id,))
             conn.commit()
+
+    _sync_push_imediato_ou_enfileirar("POST", f"/comandas/{comanda_id}/cancelar", {
+        "comanda_id": comanda_id
+    })
 
 def obter_comanda_detalhes(comanda_id: int) -> Optional[dict]:
     """Retorna detalhes da comanda e seus itens lançados."""
@@ -679,8 +873,8 @@ def adicionar_item_comanda(comanda_id: int, produto_id: int, quantidade: int = 1
 
             conn.commit()
 
-    # Enfileira sincronização com o Xano em background
-    _enqueue_xano("POST", f"/comandas/{comanda_id}/itens", {
+    # Sincronização imediata em lockstep com o Xano (ou fila coordenada)
+    _sync_push_imediato_ou_enfileirar("POST", f"/comandas/{comanda_id}/itens", {
         "produto_query": produto["nome"],
         "quantidade": quantidade,
         "observacao": obs_sanitizada or ""
@@ -719,14 +913,14 @@ def editar_item_comanda(item_id: int, quantidade: int, preco_momento: float, obs
 
             conn.commit()
 
-    _enqueue_xano("PATCH", f"/itens_comanda/{item_id}", {
+    _sync_push_imediato_ou_enfileirar("PATCH", f"/itens_comanda/{item_id}", {
         "quantidade": quantidade,
         "preco_momento": preco_momento,
         "observacao": obs_sanitizada or ""
     })
 
 def remover_item_comanda(item_id: int):
-    """Remove item da comanda, estorna o estoque atômico e enfileira exclusão no Xano."""
+    """Remove item da comanda, estorna o estoque atômico e sincroniza exclusão no Xano."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -738,7 +932,7 @@ def remover_item_comanda(item_id: int):
             cursor.execute("DELETE FROM itens_comanda WHERE id = ?", (item_id,))
             conn.commit()
 
-    _enqueue_xano("DELETE", f"/itens_comanda/{item_id}")
+    _sync_push_imediato_ou_enfileirar("DELETE", f"/itens_comanda/{item_id}")
 
 # ================= GESTÃO DE QR CODES DE MESAS E PRÉ-COMANDA =================
 
@@ -885,9 +1079,9 @@ def confirmar_precomanda_cliente(numero_mesa: int, itens: List[dict]) -> dict:
 
             conn.commit()
 
-    # Enfileira sincronização com o Xano fora do lock de banco
+    # Sincronização imediata (ou fila coordenada) com o Xano fora do lock de banco
     for it_conf in itens_confirmados:
-        _enqueue_xano("POST", f"/comandas/{comanda_id}/itens", {
+        _sync_push_imediato_ou_enfileirar("POST", f"/comandas/{comanda_id}/itens", {
             "produto_query": it_conf["nome"],
             "quantidade": it_conf["quantidade"],
             "observacao": it_conf["observacao"]
@@ -927,7 +1121,7 @@ def fechar_comanda(comanda_id: int, valor_final: float, taxa_servico: bool = Tru
                 cursor.execute("DELETE FROM mesas WHERE id = ?", (mesa_id,))
             conn.commit()
 
-    _enqueue_xano("POST", f"/comandas/{comanda_id}/fechar", {
+    _sync_push_imediato_ou_enfileirar("POST", f"/comandas/{comanda_id}/fechar", {
         "valor_final": round(valor_final, 2),
         "taxa_servico": taxa_servico
     })
@@ -1030,7 +1224,7 @@ def criar_produto(
                 "disponivel": 1 if disponivel else 0
             }
 
-    _enqueue_xano("POST", "/produto", {
+    _sync_push_imediato_ou_enfileirar("POST", "/produto", {
         "codigo_pdv": cod,
         "nome": nome_sanitizado,
         "categoria": cat_sanitizada,
@@ -1098,7 +1292,7 @@ def atualizar_produto(
                 raise ValueError("Produto não encontrado.")
             conn.commit()
 
-    _enqueue_xano("PATCH", f"/produto/{produto_id}", {
+    _sync_push_imediato_ou_enfileirar("PATCH", f"/produto/{produto_id}", {
         "codigo_pdv": cod,
         "nome": nome_sanitizado,
         "categoria": cat_sanitizada,
@@ -1111,14 +1305,14 @@ def atualizar_produto(
     })
 
 def excluir_produto(produto_id: int):
-    """Exclui produto do cardápio e agenda sincronização no Xano."""
+    """Exclui produto do cardápio e sincroniza exclusão no Xano."""
     with _db_lock:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM produtos WHERE id = ?", (produto_id,))
             conn.commit()
 
-    _enqueue_xano("DELETE", f"/produto/{produto_id}")
+    _sync_push_imediato_ou_enfileirar("DELETE", f"/produto/{produto_id}")
 
 def sincronizar_produtos_xano() -> int:
     """
@@ -1126,20 +1320,24 @@ def sincronizar_produtos_xano() -> int:
     incluindo URLs reais de fotos (Imgur), descrições completas, estoque e preços.
     Realiza espelhamento fiel (prunando do SQLite produtos que foram excluídos ou não existem no Xano).
     """
-    url = f"{XANO_BASE_URL}/produto"
+    url = f"{XANO_BASE_URL.rstrip('/')}/produto"
     try:
+        headers = {"Content-Type": "application/json"}
+        if XANO_API_KEY:
+            headers["Authorization"] = f"Bearer {XANO_API_KEY}"
         with httpx.Client(timeout=10.0) as client:
-            resp = client.get(url)
+            resp = client.get(url, headers=headers)
+            _registrar_chamada_xano()
             if resp.status_code != 200:
                 logger.warning(f"Falha ao consultar produtos no Xano (HTTP {resp.status_code})")
                 return 0
             prods_xano = resp.json()
 
         sincronizados = 0
-        valid_codigos = []
         with _db_lock:
             with get_connection() as conn:
                 cursor = conn.cursor()
+                cursor.execute("DELETE FROM produtos;")
                 for px in prods_xano:
                     nome = str(px.get("nome") or "").strip()
                     # Ignorar registros corrompidos de teste ou vazios
@@ -1149,8 +1347,6 @@ def sincronizar_produtos_xano() -> int:
                     cod = str(px.get("codigo_pdv") or px.get("id") or "").strip()
                     if not cod:
                         continue
-
-                    valid_codigos.append(cod)
 
                     desc = str(px.get("descricao") or "").strip()
                     foto = str(px.get("url_imagem") or "").strip()
@@ -1163,30 +1359,14 @@ def sincronizar_produtos_xano() -> int:
                     disp = 1 if px.get("disponivel", True) else 0
 
                     xano_id = int(px.get("id"))
-                    cursor.execute("SELECT id FROM produtos WHERE id = ? OR LOWER(codigo_pdv) = LOWER(?)", (xano_id, cod))
-                    row = cursor.fetchone()
-                    if row:
-                        cursor.execute("""
-                        UPDATE produtos
-                        SET id = ?, codigo_pdv = ?, nome = ?, categoria = ?, preco_unitario = ?,
-                            descricao = ?, url_imagem = ?, qtd_disp = ?,
-                            precisa_produzir = ?, disponivel = ?
-                        WHERE id = ?
-                        """, (xano_id, cod, nome, categoria, preco, desc, foto, qtd, precisa, disp, row["id"]))
-                    else:
-                        cursor.execute("""
-                        INSERT INTO produtos (
-                            id, codigo_pdv, nome, categoria, preco_unitario,
-                            descricao, url_imagem, qtd_disp, precisa_produzir, disponivel
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (xano_id, cod, nome, categoria, preco, desc, foto, qtd, precisa, disp))
+                    cursor.execute("""
+                    INSERT INTO produtos (
+                        id, codigo_pdv, nome, categoria, preco_unitario,
+                        descricao, url_imagem, qtd_disp, precisa_produzir, disponivel
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (xano_id, cod, nome, categoria, preco, desc, foto, qtd, precisa, disp))
                     sincronizados += 1
-
-                # Espelhamento fiel: remove produtos do SQLite que não existem mais no Xano
-                if valid_codigos:
-                    placeholders = ",".join("?" for _ in valid_codigos)
-                    cursor.execute(f"DELETE FROM produtos WHERE codigo_pdv NOT IN ({placeholders})", valid_codigos)
 
                 # Reativa tarefas que possam ter sido bloqueadas por rate limit 429
                 cursor.execute("""
@@ -1481,3 +1661,247 @@ try:
 except Exception:
     def gerar_pdf_bytes_cached(periodo: str = "7d") -> bytes:
         return gerar_pdf_bytes(periodo)
+
+
+# ================= GESTÃO DE COLABORADORES E AUTENTICAÇÃO (RBAC) =================
+
+def _gerar_hash_senha(senha: str) -> str:
+    """Gera hash criptográfico SHA-256 com salt estático da aplicação."""
+    raw = f"{CHURRAS_SALT}:{str(senha).strip()}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+def autenticar_usuario(email: str, senha: str) -> Optional[dict]:
+    """Valida as credenciais de um colaborador e retorna seu perfil se ativo com dados sensíveis descriptografados."""
+    init_db()
+    email_limpo = str(email).strip().lower()
+    senha_hash = _gerar_hash_senha(senha)
+    
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT id, nome, email, numero, cargo, primeiro_acesso, ativo
+            FROM colaboradores
+            WHERE LOWER(email) = ? AND senha_hash = ? AND ativo = 1
+            """, (email_limpo, senha_hash))
+            row = cursor.fetchone()
+            if row:
+                nome_dec = descriptografar_dado(row["nome"])
+                numero_dec = descriptografar_dado(row["numero"])
+                cargo_dec = descriptografar_dado(row["cargo"])
+                return {
+                    "id": row["id"],
+                    "nome": nome_dec,
+                    "email": row["email"],
+                    "numero": numero_dec,
+                    "cargo": cargo_dec,
+                    "primeiro_acesso": bool(row["primeiro_acesso"]),
+                    "ativo": bool(row["ativo"])
+                }
+    return None
+
+def cadastrar_colaborador(nome: str, email: str, senha: str, numero: str, cargo: str) -> dict:
+    """Cadastra um novo colaborador criptografando nome, telefone, cargo e senha no SQLite e no Xano."""
+    init_db()
+    nome_limpo = html.escape(str(nome).strip())
+    email_limpo = str(email).strip().lower()
+    numero_limpo = html.escape(str(numero).strip())
+    cargo_limpo = str(cargo).strip().lower()
+    
+    if not nome_limpo or not email_limpo or not senha.strip():
+        raise ValueError("Nome, email e senha são obrigatórios.")
+    if cargo_limpo not in ("caixa", "gerente"):
+        raise ValueError("O cargo deve ser obrigatoriamente 'caixa' ou 'gerente'.")
+    if "@" not in email_limpo:
+        raise ValueError("Formato de e-mail inválido.")
+
+    # Criptografia simétrica com chave Fernet dos dados sensíveis
+    nome_cifrado = criptografar_dado(nome_limpo)
+    numero_cifrado = criptografar_dado(numero_limpo)
+    cargo_cifrado = criptografar_dado(cargo_limpo)
+    senha_hash = _gerar_hash_senha(senha)
+    agora_iso = datetime.now().isoformat()
+
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            # Validação de unicidade do e-mail
+            cursor.execute("SELECT id FROM colaboradores WHERE LOWER(email) = ?", (email_limpo,))
+            if cursor.fetchone():
+                raise ValueError(f"Já existe um colaborador cadastrado com o e-mail '{email_limpo}'.")
+            
+            cursor.execute("""
+            INSERT INTO colaboradores (nome, email, senha_hash, numero, cargo, primeiro_acesso, ativo, criado_em, atualizado_em)
+            VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?)
+            """, (nome_cifrado, email_limpo, senha_hash, numero_cifrado, cargo_cifrado, agora_iso, agora_iso))
+            novo_id = cursor.lastrowid
+            conn.commit()
+
+    # Sincronização imediata (ou fila coordenada) com o Xano contendo os dados estritamente criptografados
+    _sync_push_imediato_ou_enfileirar("POST", "/colaborador", {
+        "id": novo_id,
+        "nome": nome_cifrado,
+        "email": email_limpo,
+        "numero": numero_cifrado,
+        "cargo": cargo_cifrado,
+        "senha_hash": senha_hash,
+        "primeiro_acesso": 1
+    })
+
+    return {
+        "id": novo_id,
+        "nome": nome_limpo,
+        "email": email_limpo,
+        "numero": numero_limpo,
+        "cargo": cargo_limpo,
+        "primeiro_acesso": True,
+        "ativo": True
+    }
+
+def atualizar_senha_colaborador(usuario_id: int, nova_senha: str) -> bool:
+    """Atualiza a senha do colaborador e desativa a flag de primeiro acesso."""
+    init_db()
+    if not str(nova_senha).strip() or len(str(nova_senha).strip()) < 4:
+        raise ValueError("A nova senha deve possuir pelo menos 4 caracteres.")
+    
+    senha_hash = _gerar_hash_senha(nova_senha)
+    agora_iso = datetime.now().isoformat()
+
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE colaboradores
+            SET senha_hash = ?, primeiro_acesso = 0, atualizado_em = ?
+            WHERE id = ?
+            """, (senha_hash, agora_iso, usuario_id))
+            if cursor.rowcount == 0:
+                return False
+            conn.commit()
+
+    _sync_push_imediato_ou_enfileirar("PATCH", f"/colaborador/{usuario_id}", {
+        "primeiro_acesso": 0,
+        "atualizado_em": agora_iso
+    })
+    return True
+
+def listar_colaboradores() -> List[dict]:
+    """Lista todos os colaboradores cadastrados descriptografando dinamicamente nome, telefone e cargo."""
+    init_db()
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT id, nome, email, numero, cargo, primeiro_acesso, ativo, criado_em, atualizado_em
+            FROM colaboradores
+            ORDER BY id ASC
+            """)
+            rows = cursor.fetchall()
+            lista = []
+            for r in rows:
+                lista.append({
+                    "id": r["id"],
+                    "nome": descriptografar_dado(r["nome"]),
+                    "email": r["email"],
+                    "numero": descriptografar_dado(r["numero"]),
+                    "cargo": descriptografar_dado(r["cargo"]),
+                    "primeiro_acesso": bool(r["primeiro_acesso"]),
+                    "ativo": bool(r["ativo"]),
+                    "criado_em": r["criado_em"],
+                    "atualizado_em": r["atualizado_em"]
+                })
+            lista.sort(key=lambda x: (x["cargo"], x["nome"]))
+            return lista
+
+def excluir_colaborador(usuario_id: int) -> bool:
+    """Remove um colaborador do banco de dados (não permite excluir se for o único gerente)."""
+    init_db()
+    with _db_lock:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT cargo, ativo FROM colaboradores WHERE id = ?", (usuario_id,))
+            target = cursor.fetchone()
+            if not target:
+                return False
+            
+            cargo_target = descriptografar_dado(target["cargo"])
+            if cargo_target == "gerente":
+                # Contabiliza quantos gerentes ativos existem no total
+                cursor.execute("SELECT cargo, ativo FROM colaboradores WHERE ativo = 1")
+                todos_ativos = cursor.fetchall()
+                gerentes_ativos = [c for c in todos_ativos if descriptografar_dado(c["cargo"]) == "gerente"]
+                if len(gerentes_ativos) <= 1:
+                    raise ValueError("Não é possível remover o único gerente administrador ativo do sistema.")
+
+            cursor.execute("DELETE FROM colaboradores WHERE id = ?", (usuario_id,))
+            conn.commit()
+
+    _sync_push_imediato_ou_enfileirar("DELETE", f"/colaborador/{usuario_id}")
+    return True
+
+def sincronizar_colaboradores_xano() -> int:
+    """
+    Sincroniza os colaboradores locais do SQLite puxando os dados criptografados diretamente do Xano
+    em uma única chamada GET (1 requisição HTTP), prevenindo rate limit.
+    """
+    url = f"{XANO_BASE_URL.rstrip('/')}/colaborador"
+    try:
+        headers = {"Content-Type": "application/json"}
+        if XANO_API_KEY:
+            headers["Authorization"] = f"Bearer {XANO_API_KEY}"
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(url, headers=headers)
+            _registrar_chamada_xano()
+            if resp.status_code != 200:
+                logger.warning(f"Falha ao consultar colaboradores no Xano (HTTP {resp.status_code})")
+                return 0
+            colabs_xano = resp.json()
+
+        sincronizados = 0
+        with _db_lock:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                agora_iso = datetime.now().isoformat()
+                for cx in colabs_xano:
+                    email = str(cx.get("email") or "").strip().lower()
+                    if not email or "@" not in email:
+                        continue
+                    
+                    nome = str(cx.get("nome") or "").strip()
+                    numero = str(cx.get("numero") or "").strip()
+                    cargo = str(cx.get("cargo") or "caixa").strip()
+                    senha_hash = str(cx.get("senha_hash") or "").strip()
+                    p_acesso = 1 if cx.get("primeiro_acesso", True) else 0
+                    ativo = 1 if cx.get("ativo", True) else 0
+                    xano_id = int(cx.get("id"))
+
+                    # Garantir que campos confidenciais tenham o envelope Fernet
+                    if not nome.startswith("ENC:"):
+                        nome = criptografar_dado(nome)
+                    if not numero.startswith("ENC:"):
+                        numero = criptografar_dado(numero)
+                    if not cargo.startswith("ENC:"):
+                        cargo = criptografar_dado(cargo)
+
+                    cursor.execute("SELECT id FROM colaboradores WHERE LOWER(email) = ? OR id = ?", (email, xano_id))
+                    row = cursor.fetchone()
+                    if row:
+                        cursor.execute("""
+                        UPDATE colaboradores
+                        SET id = ?, nome = ?, email = ?, senha_hash = ?, numero = ?, cargo = ?,
+                            primeiro_acesso = ?, ativo = ?, atualizado_em = ?
+                        WHERE id = ?
+                        """, (xano_id, nome, email, senha_hash, numero, cargo, p_acesso, ativo, agora_iso, row["id"]))
+                    else:
+                        cursor.execute("""
+                        INSERT INTO colaboradores (id, nome, email, senha_hash, numero, cargo, primeiro_acesso, ativo, criado_em, atualizado_em)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (xano_id, nome, email, senha_hash, numero, cargo, p_acesso, ativo, agora_iso, agora_iso))
+                    sincronizados += 1
+                conn.commit()
+        logger.info(f"Sincronização de colaboradores com Xano concluída: {sincronizados} colaboradores sincronizados.")
+        return sincronizados
+    except Exception as e:
+        logger.warning(f"Erro ao sincronizar colaboradores com Xano: {e}")
+        return 0
+

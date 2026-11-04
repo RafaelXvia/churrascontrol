@@ -88,6 +88,12 @@ class TestCardapioClienteQRCode(unittest.TestCase):
         # Limpeza
         data_manager.cancelar_comanda(cid)
         data_manager.excluir_produto(p["id"])
+        with data_manager.get_connection() as c:
+            c.execute("DELETE FROM itens_comanda WHERE comanda_id = ?", (cid,))
+            c.execute("DELETE FROM comandas WHERE id = ?", (cid,))
+            c.execute("DELETE FROM mesas WHERE numero_mesa = 99")
+            c.execute("DELETE FROM fila_sincronizacao")
+            c.commit()
 
     def test_04_confirmar_precomanda_cliente(self):
         """Valida a confirmação da pré-comanda de autoatendimento na Mesa 8."""
@@ -125,6 +131,12 @@ class TestCardapioClienteQRCode(unittest.TestCase):
 
         # Limpeza
         data_manager.cancelar_comanda(res["comanda_id"])
+        with data_manager.get_connection() as c:
+            c.execute("DELETE FROM itens_comanda WHERE comanda_id = ?", (res["comanda_id"],))
+            c.execute("DELETE FROM comandas WHERE id = ?", (res["comanda_id"],))
+            c.execute("DELETE FROM mesas WHERE numero_mesa = 8")
+            c.execute("DELETE FROM fila_sincronizacao")
+            c.commit()
 
 if __name__ == "__main__":
     unittest.main()

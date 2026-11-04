@@ -99,6 +99,13 @@ def run_tests():
     print(f"  [PASS] Dashboard faturamento total: R$ {dash['resumo']['faturamento_total']:.2f}")
     print(f"  [PASS] PDF gerado com sucesso: {len(pdf_bytes)} bytes")
 
+    # Limpeza dos artefatos de teste para manter o banco limpo
+    with data_manager.get_connection() as c:
+        c.execute("DELETE FROM itens_comanda WHERE comanda_id = ?", (comanda_id,))
+        c.execute("DELETE FROM comandas WHERE id = ?", (comanda_id,))
+        c.execute("DELETE FROM fila_sincronizacao")
+        c.commit()
+
     print("-" * 65)
     print("RESULTADO: TODOS OS TESTES DO SQLITE PASSARAM COM SUCESSO!")
     return True

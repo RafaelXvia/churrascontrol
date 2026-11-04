@@ -23,9 +23,22 @@ def inject_custom_theme():
             height: 0 !important;
         }
 
-        /* Ocultação de menus de depuração do Streamlit */
-        #MainMenu, footer, header[data-testid="stHeader"] {
-            background-color: transparent !important;
+        /* Ocultação e anulação total de sobreposição do header nativo */
+        header[data-testid="stHeader"],
+        div[data-testid="stHeader"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            pointer-events: none !important;
+        }
+
+        #MainMenu, footer {
+            display: none !important;
+            visibility: hidden !important;
         }
         
         /* Ajuste do Container Principal para Responsividade Extrema */
@@ -47,6 +60,14 @@ def inject_custom_theme():
         }
 
         /* ================= TOP NAVBAR UNIFICADA ================= */
+        .st-key-cc_nav_desktop,
+        .st-key-cc_nav_mobile,
+        .st-key-cc_navbar_container {
+            position: relative !important;
+            z-index: 9999 !important;
+            pointer-events: auto !important;
+        }
+
         .st-key-cc_navbar_container {
             background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(11, 15, 25, 0.92) 100%) !important;
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -810,22 +831,138 @@ def inject_custom_theme():
     </style>
     """, unsafe_allow_html=True)
 
-def render_navbar(active_tab: str = "home"):
+def obter_usuario_logado() -> Optional[dict]:
+    """Retorna o dicionário do usuário logado na sessão ou None."""
+    return st.session_state.get("usuario_logado")
+
+def fazer_logout():
+    """Encerra a sessão do usuário e retorna à tela de login."""
+    st.session_state["usuario_logado"] = None
+    st.rerun()
+
+def exigir_autenticacao() -> dict:
     """
-    Renderiza a barra superior de navegação moderna e 100% responsiva:
-    - Em Telões e Desktop (>= 992px): Exibe a barra executiva completa com abas diretas.
-    - Em Tablets e Smartphones (< 992px): Exibe a barra compacta com o botão Menu
-      que abre o painel retrátil de navegação ao ser clicado.
-    active_tab: 'home' | 'salao' | 'cardapio' | 'relatorios'
+    Guarda de segurança: exige que o usuário esteja autenticado.
+    Se não estiver, exibe a tela de login moderna e interrompe a execução com st.stop().
+    Se estiver com primeiro_acesso == True, exibe a tela de redefinição obrigatória de senha e interrompe.
     """
     inject_custom_theme()
+    if "usuario_logado" not in st.session_state or not st.session_state["usuario_logado"]:
+        # Tela de Login Profissional
+        st.markdown("""
+        <div style="max-width: 440px; margin: 40px auto 20px auto; text-align: center;">
+            <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #d97706 0%, #b45309 100%); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(217, 119, 6, 0.45); margin-bottom: 12px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                </svg>
+            </div>
+            <h2 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: #ffffff;">CHURRAS<span style="color:#f59e0b;">CONTROL</span></h2>
+            <p style="margin: 4px 0 20px 0; color: #94a3b8; font-size: 0.88rem;">Terminal Operacional • Identifique-se para continuar</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_l, col_center, col_r = st.columns([1, 2, 1])
+        with col_center:
+            with st.form("form_login_churrascontrol"):
+                st.markdown("<div style='font-size: 0.85rem; color: #cbd5e1; font-weight: 600; margin-bottom: 4px;'>E-mail Corporativo:</div>", unsafe_allow_html=True)
+                email = st.text_input("E-mail", placeholder="gerente@churrascontrol.com", label_visibility="collapsed")
+                st.markdown("<div style='font-size: 0.85rem; color: #cbd5e1; font-weight: 600; margin-bottom: 4px; margin-top: 10px;'>Senha de Acesso:</div>", unsafe_allow_html=True)
+                senha = st.text_input("Senha", type="password", placeholder="••••••••", label_visibility="collapsed")
+                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                btn_login = st.form_submit_button("Entrar no Sistema", type="primary", use_container_width=True)
+
+                if btn_login:
+                    import data_manager
+                    u = data_manager.autenticar_usuario(email, senha)
+                    if u:
+                        st.session_state["usuario_logado"] = u
+                        st.success(f"Bem-vindo(a), {u['nome']}!")
+                        st.rerun()
+                    else:
+                        st.error("Credenciais inválidas. Verifique o e-mail e a senha informados.")
+
+            st.caption("Acesso restrito aos colaboradores autorizados (Gerente e Caixa).")
+        st.stop()
+
+    usuario = st.session_state["usuario_logado"]
+
+    # Fluxo de Primeiro Acesso Obrigatório:
+    if usuario.get("primeiro_acesso"):
+        st.markdown("""
+        <div style="max-width: 520px; margin: 30px auto 14px auto; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🔐</div>
+            <h3 style="margin: 0; font-size: 1.45rem; font-weight: 800; color: #ffffff;">Primeiro Acesso — Redefinição de Senha</h3>
+            <p style="margin: 6px 0 16px 0; color: #94a3b8; font-size: 0.88rem;">
+                Por políticas de segurança, substitua a senha provisória cadastrada pelo gerente por uma nova senha pessoal de sua escolha antes de prosseguir.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        col_l, col_center, col_r = st.columns([1, 2, 1])
+        with col_center:
+            with st.form("form_primeiro_acesso"):
+                nova_senha = st.text_input("Nova Senha Pessoal *", type="password", placeholder="Mínimo 4 caracteres")
+                conf_senha = st.text_input("Confirmar Nova Senha *", type="password", placeholder="Repita a nova senha")
+                btn_trocar = st.form_submit_button("Salvar Nova Senha e Continuar", type="primary", use_container_width=True)
+                if btn_trocar:
+                    if not nova_senha or len(nova_senha) < 4:
+                        st.error("A nova senha deve ter no mínimo 4 caracteres.")
+                    elif nova_senha != conf_senha:
+                        st.error("As senhas digitadas não coincidem.")
+                    else:
+                        import data_manager
+                        data_manager.atualizar_senha_colaborador(usuario["id"], nova_senha)
+                        st.session_state["usuario_logado"]["primeiro_acesso"] = False
+                        st.success("Senha pessoal atualizada com sucesso! Acesso liberado.")
+                        st.rerun()
+        st.stop()
+
+    return usuario
+
+def verificar_permissao_acesso(cargos_permitidos: list) -> dict:
+    """Verifica se o usuário logado tem o cargo necessário. Se não tiver, bloqueia o acesso à tela."""
+    usuario = exigir_autenticacao()
+    cargo = str(usuario.get("cargo", "")).lower()
+    cargos_norm = [c.lower() for c in cargos_permitidos]
+    if cargo not in cargos_norm:
+        inject_custom_theme()
+        st.markdown(f"""
+        <div style="max-width: 550px; margin: 60px auto; background: rgba(239, 68, 68, 0.1); border: 1.5px solid rgba(239, 68, 68, 0.4); border-radius: 16px; padding: 24px; text-align: center;">
+            <div style="font-size: 2.5rem; margin-bottom: 10px;">🛡️</div>
+            <h3 style="margin: 0; color: #f87171; font-weight: 800; font-size: 1.35rem;">Acesso Restrito ao Perfil Gerente</h3>
+            <p style="margin: 8px 0 18px 0; color: #cbd5e1; font-size: 0.9rem;">
+                Seu perfil de acesso atual é <b>{cargo.upper()}</b>. Esta tela só pode ser visualizada por colaboradores com cargo: <b>{', '.join(c.upper() for c in cargos_permitidos)}</b>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1.5, 1])
+        with col2:
+            if st.button("⬅️ Retornar ao Painel Geral", type="primary", use_container_width=True):
+                st.switch_page("app.py")
+        st.stop()
+    return usuario
+
+def render_navbar(active_tab: str = "home"):
+    """
+    Renderiza a barra superior de navegação moderna, adaptada dinamicamente ao cargo do colaborador:
+    - Gerente: Vê Painel Geral, Salão & Mesas, Cardápio, Relatórios e Colaboradores.
+    - Caixa: Vê apenas Painel Geral e Salão & Mesas.
+    """
+    inject_custom_theme()
+    usuario = obter_usuario_logado()
+    is_gerente = (usuario and str(usuario.get("cargo", "")).lower() == "gerente")
+    nome_usuario = usuario.get("nome", "").split()[0] if usuario else ""
+    cargo_label = usuario.get("cargo", "").upper() if usuario else ""
 
     # 1. NAVBAR DESKTOP & TELÕES (>= 992px)
     with st.container(key="cc_nav_desktop"):
-        c_brand, c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(
-            [3.2, 1.4, 1.5, 1.4, 1.4],
-            vertical_alignment="center"
-        )
+        if is_gerente:
+            # 5 abas + brand + user chip
+            cols = st.columns([2.5, 1.2, 1.3, 1.1, 1.1, 1.3, 1.5], vertical_alignment="center")
+            c_brand, c_nav1, c_nav2, c_nav3, c_nav4, c_nav5, c_user = cols
+        else:
+            # Caixa: apenas Painel Geral e Salão & Mesas
+            cols = st.columns([3.5, 1.6, 1.8, 1.8], vertical_alignment="center")
+            c_brand, c_nav1, c_nav2, c_user = cols
 
         with c_brand:
             st.markdown("""
@@ -852,13 +989,33 @@ def render_navbar(active_tab: str = "home"):
             if st.button("Salão & Mesas", key="nav_desk_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                 st.switch_page("pages/1_Salao_e_Mesas.py")
 
-        with c_nav3:
-            if st.button("Cardápio", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
-                st.switch_page("pages/2_Cardapio.py")
+        if is_gerente:
+            with c_nav3:
+                if st.button("Cardápio", key="nav_desk_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+                    st.switch_page("pages/2_Cardapio.py")
 
-        with c_nav4:
-            if st.button("Relatórios", key="nav_desk_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
-                st.switch_page("pages/3_Relatorios.py")
+            with c_nav4:
+                if st.button("Relatórios", key="nav_desk_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
+                    st.switch_page("pages/3_Relatorios.py")
+
+            with c_nav5:
+                if st.button("Colaboradores", key="nav_desk_colabs", use_container_width=True, type="primary" if active_tab == "colaboradores" else "secondary"):
+                    st.switch_page("pages/6_Colaboradores.py")
+
+        with c_user:
+            if usuario:
+                c_u1, c_u2 = st.columns([2, 1])
+                with c_u1:
+                    badge_color = "#f59e0b" if is_gerente else "#38bdf8"
+                    st.markdown(f"""
+                    <div style="font-size: 0.76rem; color: #cbd5e1; white-space: nowrap; text-align: right; line-height: 1.2;">
+                        <span style="font-weight: 700; color: #fff;">{nome_usuario}</span><br>
+                        <span style="color: {badge_color}; font-size: 0.68rem; font-weight: 700;">[{cargo_label}]</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_u2:
+                    if st.button("Sair", key="nav_desk_logout", help="Encerrar Sessão", use_container_width=True):
+                        fazer_logout()
 
     # 2. NAVBAR MOBILE & TABLETS (< 992px com Menu)
     with st.container(key="cc_nav_mobile"):
@@ -883,21 +1040,31 @@ def render_navbar(active_tab: str = "home"):
 
         with m_menu:
             with st.popover("Menu", use_container_width=True, help="Abrir Menu de Navegação"):
-                st.markdown("""
-                <div style="padding: 2px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
-                    <span style="font-size: 0.74rem; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.06em;">
-                        Navegação do Sistema
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
+                if usuario:
+                    st.markdown(f"""
+                    <div style="padding: 2px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #fff;">{usuario.get('nome', '')}</span>
+                        <span style="font-size: 0.70rem; color: #f59e0b; margin-left: 4px;">[{cargo_label}]</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
                 if st.button("Painel Geral", key="nav_mob_home", use_container_width=True, type="primary" if active_tab == "home" else "secondary"):
                     st.switch_page("app.py")
                 if st.button("Salão & Mesas", key="nav_mob_salao", use_container_width=True, type="primary" if active_tab == "salao" else "secondary"):
                     st.switch_page("pages/1_Salao_e_Mesas.py")
-                if st.button("Cardápio", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
-                    st.switch_page("pages/2_Cardapio.py")
-                if st.button("Relatórios", key="nav_mob_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
-                    st.switch_page("pages/3_Relatorios.py")
+
+                if is_gerente:
+                    if st.button("Cardápio", key="nav_mob_cardapio", use_container_width=True, type="primary" if active_tab == "cardapio" else "secondary"):
+                        st.switch_page("pages/2_Cardapio.py")
+                    if st.button("Relatórios", key="nav_mob_relatorios", use_container_width=True, type="primary" if active_tab == "relatorios" else "secondary"):
+                        st.switch_page("pages/3_Relatorios.py")
+                    if st.button("Colaboradores", key="nav_mob_colabs", use_container_width=True, type="primary" if active_tab == "colaboradores" else "secondary"):
+                        st.switch_page("pages/6_Colaboradores.py")
+
+                if usuario:
+                    st.markdown("<hr style='margin: 8px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
+                    if st.button("Sair da Conta", key="nav_mob_logout", use_container_width=True):
+                        fazer_logout()
 
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
