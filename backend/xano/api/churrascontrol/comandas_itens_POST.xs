@@ -17,6 +17,29 @@ query "comandas/{comanda_id}/itens" verb=POST {
       error      = "Produto não encontrado no cardápio."
     }
 
+    db.get comandas {
+      field_name  = "id"
+      field_value = $input.comanda_id
+    } as $comanda_pai
+
+    conditional {
+      if ($comanda_pai == null) {
+        db.add comandas {
+          enforce_hidden_fields = false
+          data = {
+            id                   : $input.comanda_id,
+            created_at           : "now",
+            numero_mesa_historico: 1,
+            data_abertura        : "now",
+            status               : "ABERTA",
+            taxa_servico         : true,
+            qtd_pessoas          : 1,
+            valor_total          : 0.00
+          }
+        } as $comanda_auto_criada
+      }
+    }
+
     db.query itens_comanda {
       where  = ($db.itens_comanda.comanda_id == $input.comanda_id && $db.itens_comanda.produto_id == $produto.id)
       return = {type: "single"}

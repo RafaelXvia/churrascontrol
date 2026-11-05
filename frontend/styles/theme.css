@@ -1,0 +1,52 @@
+/* ==============================================================================
+   ChurrasControl — Sistema de Design & Estilos Visuais Premium
+   Localização: frontend/styles/theme.css
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+:root {
+    --bg-dark: #090d16;
+    --card-bg: rgba(17, 24, 39, 0.75);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --primary: #f59e0b;
+    --primary-hover: #d97706;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+/* Ocultação Completa da Barra Lateral (Sidebar) em todas as telas */
+[data-testid="stSidebar"], 
+section[data-testid="stSidebar"], 
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapseButton"],
+button[kind="header"] {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Ocultação e anulação total de sobreposição do header nativo */
+header[data-testid="stHeader"],
+div[data-testid="stHeader"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+}
+
+#MainMenu, footer {
+    visibility: hidden !important;
+    display: none !important;
+}
+
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}

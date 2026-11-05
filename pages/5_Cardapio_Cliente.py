@@ -1,7 +1,7 @@
 import streamlit as st
 import html
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 st.set_page_config(
     page_title="Cardápio Digital — ChurrasControl",
@@ -151,16 +151,17 @@ div[class*="st-key-btn_nav_carrinho"] button {
 .client-card {
     background: #1c202a;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px 16px 0 0;
+    border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
     cursor: pointer !important;
+    position: relative;
 }
 [data-testid="stColumn"]:hover .client-card {
-    border-color: rgba(255, 111, 0, 0.45);
+    border-color: rgba(255, 111, 0, 0.55);
 }
 
 .client-img-wrap {
@@ -262,24 +263,40 @@ div[class*="st-key-btn_nav_carrinho"] button {
     color: #ff9800;
 }
 
-/* 7. Botão Acoplado Perfeitamente ao Card */
-[data-testid="stColumn"] > div:has(.client-card) + div button {
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
-    border-bottom-left-radius: 14px !important;
-    border-bottom-right-radius: 14px !important;
-    margin-top: -1px !important;
-    background: #252b38 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-top: 0 !important;
-    color: #ff9800 !important;
-    font-weight: 800 !important;
-    padding: 9px 12px !important;
-    transition: background 0.2s ease !important;
+/* 7. Overlay Clicável Nativo Cobrindo 100% do Card (Sem botão físico visível) */
+div[class*="st-key-card_box_"] {
+    position: relative !important;
+    border-radius: 16px !important;
 }
-[data-testid="stColumn"]:hover > div:has(.client-card) + div button {
-    background: #ff6f00 !important;
-    color: #ffffff !important;
+div[class*="st-key-card_box_"]:hover .client-card {
+    border-color: rgba(255, 111, 0, 0.6) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 24px rgba(255, 111, 0, 0.25) !important;
+}
+div[class*="st-key-card_box_"] div[class*="st-key-btn_item_"] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 25 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+div[class*="st-key-card_box_"] div[class*="st-key-btn_item_"] button {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* 8. Grid Responsivo Universal (1 card/linha em telas <= 768px, 3 em desktop) */
@@ -341,13 +358,29 @@ div[class*="st-key-btn_fab_carrinho_fixo"] button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# 1. Recuperação e fixação do número da mesa exclusivamente via Query Params
+# 1. Recuperação e validação criptográfica do número da mesa e token QR Code via Query Params
 query_params = st.query_params
-mesa_param = query_params.get("mesa", "")
+mesa_param = query_params.get("mesa", "") or query_params.get("mesa_id", "")
+token_param = query_params.get("token", "")
 try:
     mesa_atual = int(mesa_param) if mesa_param else 6
 except ValueError:
     mesa_atual = 6
+
+usuario_interno = ui_components.obter_usuario_logado()
+acesso_qr_valido = data_manager.validar_acesso_cardapio_qr(mesa_atual, token_param)
+
+if not acesso_qr_valido and not usuario_interno:
+    st.markdown(
+        f'<div style="max-width: 460px; margin: 60px auto; background: #1e222b; border: 1px solid rgba(239, 83, 80, 0.4); border-radius: 16px; padding: 28px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">'
+        f'<h3 style="margin: 0 0 8px 0; color: #ffffff; font-weight: 800;">QR Code Inválido ou Expirado</h3>'
+        f'<p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5; margin-bottom: 0;">'
+        f'Para realizar pedidos pelo Cardápio Digital da <b>Mesa {mesa_atual:02d}</b>, escaneie o <b>QR Code oficial</b> impresso na placa da sua mesa ou solicite auxílio ao garçom.'
+        f'</p>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+    st.stop()
 
 # Chave de sessão da Pré-comanda para esta mesa física
 session_key = f"precomanda_itens_mesa_{mesa_atual}"
@@ -370,6 +403,89 @@ def obter_historico_comanda_mesa(num_mesa: int):
     except Exception:
         pass
     return None
+
+# ================= MODAL RESPONSIVO DE DETALHES DO PRATO =================
+@st.dialog("Detalhes do Prato", width="medium")
+def modal_detalhes_item(prod: dict):
+    img_url = prod.get("url_imagem") or "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
+    nome = prod.get("nome", "Prato")
+    preco = float(prod.get("preco_unitario", 0.0))
+    desc = prod.get("descricao") or "Prato especial preparado com ingredientes nobres e tempero exclusivo da casa."
+    cat = prod.get("categoria", "Geral")
+    saldo_disp = int(prod.get("qtd_disp") or 15)
+
+    st.markdown(f"""
+    <div style="border-radius: 14px; overflow: hidden; margin-bottom: 14px; position: relative; height: 180px; background: #262a34;">
+        <img src="{img_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="{html.escape(nome)}"/>
+        <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.75); border: 1px solid rgba(255,183,77,0.4); color: #ffb74d; padding: 3px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700;">
+            {html.escape(cat)}
+        </div>
+        <div style="position: absolute; top: 10px; right: 10px; background: rgba(46,125,50,0.92); color: #fff; padding: 3px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700;">
+            Disponível ({saldo_disp} un)
+        </div>
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px;">
+            <h2 style="margin: 0; color: #ffffff; font-size: 1.35rem; font-weight: 800;">{html.escape(nome)}</h2>
+            <div style="font-size: 1.35rem; font-weight: 900; color: #ffb300;">R$ {preco:.2f}</div>
+        </div>
+        <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.45;">
+            {html.escape(desc)}
+        </p>
+    </div>
+    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 12px 0;">
+    """, unsafe_allow_html=True)
+
+    with st.form(f"form_adicionar_item_{prod['id']}"):
+        c_q1, c_q2 = st.columns([1, 1.2])
+        with c_q1:
+            qtd_max = max(1, saldo_disp)
+            qtd_pedida = st.number_input(
+                "Quantidade Desejada:",
+                min_value=1,
+                max_value=qtd_max,
+                value=1,
+                step=1,
+                key=f"modal_qtd_input_{prod['id']}"
+            )
+        with c_q2:
+            st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; font-weight: 700; margin-bottom: 6px;'>Subtotal Estimado:</div>", unsafe_allow_html=True)
+            subtotal_item = qtd_pedida * preco
+            st.markdown(f"<div style='font-size: 1.4rem; font-weight: 900; color: #ffb300;'>R$ {subtotal_item:.2f}</div>", unsafe_allow_html=True)
+
+        obs_item = st.text_input(
+            "Observações / Ponto da Carne (opcional):",
+            placeholder="Ex: Sem cebola, carne bem passada, gelo separado...",
+            key=f"modal_obs_input_{prod['id']}"
+        )
+
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        btn_adicionar = st.form_submit_button("Adicionar à Minha Comanda", type="primary", use_container_width=True)
+
+        if btn_adicionar:
+            achou = False
+            for it in st.session_state[session_key]:
+                if it["produto_id"] == prod["id"]:
+                    it["quantidade"] += int(qtd_pedida)
+                    if obs_item.strip():
+                        it["observacao"] = (it.get("observacao", "") + " | " + obs_item.strip()).strip(" |")
+                    achou = True
+                    break
+            if not achou:
+                st.session_state[session_key].append({
+                    "produto_id": prod["id"],
+                    "nome": prod["nome"],
+                    "preco_unitario": preco,
+                    "quantidade": int(qtd_pedida),
+                    "observacao": obs_item.strip()
+                })
+            st.session_state["prato_modal_detalhes"] = None
+            st.toast(f"{qtd_pedida}x '{nome}' adicionado à pré-comanda!")
+            st.rerun()
+
+    if st.button("Voltar ao Cardápio", use_container_width=True, key=f"btn_cancel_modal_{prod['id']}"):
+        st.session_state["prato_modal_detalhes"] = None
+        st.rerun()
 
 # ================= MODAL RESPONSIVO DE CARRINHO & COMANDA =================
 @st.dialog(f"Pré-Comanda & Histórico — Mesa {mesa_atual:02d}")
@@ -450,14 +566,15 @@ def modal_carrinho_mesa():
                     st.rerun()
             with col_btn_confirmar:
                 if st.button("Confirmar e Enviar Pedido", type="primary", use_container_width=True):
-                    try:
-                        res = data_manager.confirmar_precomanda_cliente(mesa_atual, st.session_state[session_key])
-                        st.session_state[session_key] = []
-                        st.session_state[f"ultimo_pedido_sucesso_mesa_{mesa_atual}"] = res
-                        st.toast("Pedido enviado com sucesso para a cozinha!", icon=None)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao confirmar pedido: {e}")
+                    with st.spinner("Enviando pedido para a cozinha..."):
+                        try:
+                            res = data_manager.confirmar_precomanda_cliente(mesa_atual, st.session_state[session_key])
+                            st.session_state[session_key] = []
+                            st.session_state[f"ultimo_pedido_sucesso_mesa_{mesa_atual}"] = res
+                            st.toast("Pedido enviado com sucesso para a cozinha!", icon=None)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao confirmar pedido: {e}")
 
     with tab_historico:
         if not historico or not historico.get("itens"):
@@ -485,56 +602,6 @@ def modal_carrinho_mesa():
                 <span style="font-size:1.3rem; color:#81c784; font-weight:900;">R$ {historico['total']:.2f}</span>
             </div>
             """, unsafe_allow_html=True)
-
-# ================= MODAL DE ADIÇÃO RÁPIDA AO CLICAR NO CARD =================
-@st.dialog("Adicionar ao Pedido")
-def modal_adicionar_prato(produto: dict):
-    img_url = produto.get("url_imagem") or "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
-    nome_prod = html.escape(str(produto.get("nome") or "Prato"))
-    desc_prod = html.escape(str(produto.get("descricao") or ""))
-    preco_unit = float(produto.get("preco_unitario") or 0.0)
-
-    st.markdown(f"""
-    <div style="display:flex; gap:14px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-        <img src="{img_url}" style="width:78px; height:78px; border-radius:12px; object-fit:cover;"/>
-        <div style="min-width:0; flex:1;">
-            <h3 style="margin:0; color:#fff; font-size:1.15rem; line-height:1.2;">{nome_prod}</h3>
-            <span style="color:#ffb300; font-weight:800; font-size:1.2rem;">R$ {preco_unit:.2f}</span>
-        </div>
-    </div>
-    <p style="color:#94a3b8; font-size:0.86rem; line-height:1.35; margin-bottom:12px;">{desc_prod}</p>
-    """, unsafe_allow_html=True)
-
-    saldo_disp = max(1, int(produto.get("qtd_disp") or 10))
-    qtd = st.number_input("Quantidade Desejada", min_value=1, max_value=max(1, saldo_disp), value=1)
-    obs = st.text_input("Alguma preferência ou observação?", placeholder="Ex: Carne ao ponto, sem cebola, etc.")
-
-    c_b1, c_b2 = st.columns([2, 1])
-    with c_b1:
-        if st.button("Adicionar à Pré-Comanda", type="primary", use_container_width=True):
-            achou = False
-            for it in st.session_state[session_key]:
-                if it["produto_id"] == produto["id"]:
-                    it["quantidade"] += qtd
-                    if obs:
-                        it["observacao"] = (it.get("observacao", "") + " | " + obs).strip(" | ")
-                    achou = True
-                    break
-            if not achou:
-                st.session_state[session_key].append({
-                    "produto_id": produto["id"],
-                    "nome": produto["nome"],
-                    "preco_unitario": preco_unit,
-                    "quantidade": qtd,
-                    "observacao": obs
-                })
-            st.session_state["modal_prato_selecionado"] = None
-            st.toast(f"{produto['nome']} adicionado ao carrinho!", icon=None)
-            st.rerun()
-    with c_b2:
-        if st.button("Voltar", use_container_width=True):
-            st.session_state["modal_prato_selecionado"] = None
-            st.rerun()
 
 # ================= TELA PRINCIPAL DO CLIENTE =================
 
@@ -566,7 +633,9 @@ st.markdown(f"""
 # 2. Barra Superior de Resumo e Acesso ao Carrinho
 btn_top_cart_label = f"Ver Pré-Comanda ({qtd_total_carrinho} itens • R$ {total_carrinho:.2f})" if qtd_total_carrinho > 0 else "Ver Pré-Comanda da Mesa"
 if st.button(btn_top_cart_label, type="primary" if qtd_total_carrinho > 0 else "secondary", use_container_width=True, key="btn_nav_carrinho"):
-    modal_carrinho_mesa()
+    st.session_state["prato_modal_detalhes"] = None
+    st.session_state["abrir_modal_carrinho"] = True
+    st.rerun()
 
 # Mensagem de confirmação se enviou pedido recentemente
 if f"ultimo_pedido_sucesso_mesa_{mesa_atual}" in st.session_state:
@@ -628,62 +697,44 @@ for i in range(0, len(produtos_filtrados), cols_per_row):
         img_url = prod.get("url_imagem") or "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80"
         
         with col:
-            st.markdown(f"""
-            <div class="client-card {'card-esgotado' if esta_esgotado else ''}" style="{'opacity: 0.55; cursor: not-allowed !important;' if esta_esgotado else 'cursor: pointer;'}">
-                <div class="client-img-wrap">
-                    <img class="client-img" src="{img_url}" alt="{html.escape(str(prod.get('nome') or 'Prato'))}"/>
-                    {badge_estoque}
-                    <span class="badge-cat">{html.escape(str(prod.get('categoria') or 'Geral'))}</span>
-                </div>
-                <div class="client-content">
-                    <div class="client-title">{html.escape(str(prod.get('nome') or ''))}</div>
-                    <div class="client-desc">{html.escape(str(prod.get('descricao') or ''))}</div>
-                    <div class="client-footer">
-                        <span class="client-price">R$ {float(prod.get('preco_unitario') or 0.0):.2f}</span>
-                        <span class="client-action-hint">{'Indisponível' if esta_esgotado else '👉 Toque no card para pedir'}</span>
+            with st.container(key=f"card_box_{prod['id']}"):
+                st.markdown(f"""
+                <div class="client-card {'card-esgotado' if esta_esgotado else ''}" style="{'opacity: 0.55; cursor: not-allowed !important;' if esta_esgotado else ''}">
+                    <div class="client-img-wrap">
+                        <img class="client-img" src="{img_url}" alt="{html.escape(str(prod.get('nome') or 'Prato'))}"/>
+                        {badge_estoque}
+                        <span class="badge-cat">{html.escape(str(prod.get('categoria') or 'Geral'))}</span>
+                    </div>
+                    <div class="client-content">
+                        <div class="client-title">{html.escape(str(prod.get('nome') or ''))}</div>
+                        <div class="client-desc">{html.escape(str(prod.get('descricao') or ''))}</div>
+                        <div class="client-footer">
+                            <span class="client-price">R$ {float(prod.get('preco_unitario') or 0.0):.2f}</span>
+                            <span class="client-action-hint">{'Indisponível' if esta_esgotado else 'Toque no card para pedir'}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Gatilho de clique acoplado (invisível ao usuário, acionado pelo toque no card)
-            if not esta_esgotado:
-                if st.button("Pedir", key=f"btn_choose_{prod['id']}", help=f"Selecionar {prod.get('nome')}"):
-                    st.session_state["modal_prato_selecionado"] = prod
-                    st.rerun()
+                """, unsafe_allow_html=True)
+                
+                # Botão invisível nativo sobreposto a 100% da área do card (abre modal de quantidade/descrição)
+                if not esta_esgotado:
+                    if st.button("Pedir", key=f"btn_item_{prod['id']}", help=f"Ver detalhes e adicionar {prod.get('nome')} à pré-comanda"):
+                        st.session_state["prato_modal_detalhes"] = prod
+                        st.session_state["abrir_modal_carrinho"] = False
+                        st.rerun()
 
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-
-# Renderiza o diálogo se houver produto selecionado
-if st.session_state.get("modal_prato_selecionado"):
-    modal_adicionar_prato(st.session_state["modal_prato_selecionado"])
-
-# JavaScript Delegado para que tocar no card acione o botão daquela coluna
-st.html("""
-<script>
-(function() {
-    function bindClientCards() {
-        document.querySelectorAll('.client-card').forEach(function(card) {
-            if (card.dataset.boundClick) return;
-            card.dataset.boundClick = 'true';
-            card.addEventListener('click', function(ev) {
-                if (card.classList.contains('card-esgotado')) return;
-                const col = card.closest('[data-testid="stColumn"]');
-                if (col) {
-                    const btn = col.querySelector('button:not([disabled])');
-                    if (btn) btn.click();
-                }
-            });
-        });
-    }
-    bindClientCards();
-    setTimeout(bindClientCards, 250);
-    setTimeout(bindClientCards, 700);
-})();
-</script>
-""")
+            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
 # Botão Flutuante Fixo (FAB) visível em qualquer altura de rolagem no celular e PC
 fab_cart_label = f"Ver Pré-Comanda ({qtd_total_carrinho})" if qtd_total_carrinho > 0 else "Ver Pré-Comanda"
 if st.button(fab_cart_label, key="btn_fab_carrinho_fixo", type="primary" if qtd_total_carrinho > 0 else "secondary"):
+    st.session_state["prato_modal_detalhes"] = None
+    st.session_state["abrir_modal_carrinho"] = True
+    st.rerun()
+
+# Disparo exclusivo dos modais (previne colisão StreamlitInvalidLayoutContextError)
+if st.session_state.get("prato_modal_detalhes"):
+    modal_detalhes_item(st.session_state["prato_modal_detalhes"])
+elif st.session_state.get("abrir_modal_carrinho"):
+    st.session_state["abrir_modal_carrinho"] = False
     modal_carrinho_mesa()

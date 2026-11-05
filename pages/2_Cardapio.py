@@ -1,6 +1,6 @@
 import streamlit as st
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 st.set_page_config(
     page_title="Cardápio & Catálogo - ChurrasControl",
@@ -8,8 +8,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 1. Guarda de segurança restrita estritamente ao perfil 'gerente'
-usuario_logado = ui_components.verificar_permissao_acesso(["gerente"])
+# 1. Guarda de segurança para perfis autorizados (gerente e caixa)
+usuario_logado = ui_components.verificar_permissao_acesso(["gerente", "caixa"])
 
 # Navbar superior unificada
 ui_components.render_navbar(active_tab="cardapio")
@@ -64,10 +64,15 @@ def dialog_novo_produto():
                         precisa_produzir=precisa_produzir,
                         disponivel=disponivel
                     )
+                    st.session_state["abrir_modal_novo_prod"] = False
                     st.success(f"Produto '{nome}' cadastrado com sucesso!")
                     st.rerun()
                 except ValueError as err:
                     st.error(str(err))
+
+    if st.button("Cancelar", use_container_width=True, key="btn_cancel_novo_prod"):
+        st.session_state["abrir_modal_novo_prod"] = False
+        st.rerun()
 
 
 @st.dialog("Gerenciar Produto (Editar / Excluir)", width="large")
@@ -150,6 +155,7 @@ def dialog_gerenciar_produto(p):
                         precisa_produzir=novo_prod,
                         disponivel=novo_disp
                     )
+                    st.session_state["prod_modal_gerenciar_id"] = None
                     st.success("Produto atualizado com sucesso!")
                     st.rerun()
                 except ValueError as e:
@@ -160,8 +166,13 @@ def dialog_gerenciar_produto(p):
         confirma_del = st.checkbox("Sim, confirmo a exclusão definitiva deste produto", key=f"del_chk_card_{p['id']}")
         if st.button("Confirmar e Excluir Definitivamente", type="primary", disabled=not confirma_del, key=f"del_btn_card_{p['id']}", use_container_width=True):
             data_manager.excluir_produto(p["id"])
+            st.session_state["prod_modal_gerenciar_id"] = None
             st.success("Produto excluído com sucesso!")
             st.rerun()
+
+    if st.button("Fechar Janela", use_container_width=True, key=f"btn_close_edit_{p['id']}"):
+        st.session_state["prod_modal_gerenciar_id"] = None
+        st.rerun()
 
 
 # ================= CSS PERSONALIZADO (CARDAPIO MODERNO, RESPONSIVO & SEM F5) =================
@@ -364,7 +375,9 @@ with c_acts2:
     c_btn_novo, c_btn_sync = st.columns([1.3, 1.0])
     with c_btn_novo:
         if st.button("+ Novo Produto", type="primary", use_container_width=True, help="Cadastrar um novo produto com todos os campos da tabela"):
-            dialog_novo_produto()
+            st.session_state["prod_modal_gerenciar_id"] = None
+            st.session_state["abrir_modal_novo_prod"] = True
+            st.rerun()
     with c_btn_sync:
         if st.button("Sincronizar Xano", use_container_width=True, help="Sincronizar produtos e fotos reais direto da API do Xano"):
             try:
@@ -448,35 +461,25 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Botão invisível nativo que aciona o modal sem nenhum F5 ou recarregamento
+                # Botão invisível nativo que aciona o modal de forma segura e exclusiva
                 if st.button("", key=f"btn_prod_card_{p['id']}", use_container_width=True):
-                    dialog_gerenciar_produto(p)
+                    st.session_state["abrir_modal_novo_prod"] = False
+                    st.session_state["prod_modal_gerenciar_id"] = p["id"]
+                    st.rerun()
 
                 st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-    # JavaScript para assegurar que qualquer clique na área do card dispare o botão invisível
-    st.html("""
-    <script>
-    (function() {
-        function bindCardClicks() {
-            document.querySelectorAll('.card-delivery').forEach(function(card) {
-                if (card.dataset.boundClick) return;
-                card.dataset.boundClick = 'true';
-                card.addEventListener('click', function(ev) {
-                    const col = card.closest('[data-testid="stColumn"]');
-                    if (col) {
-                        const btn = col.querySelector('div[class*="st-key-btn_prod_card_"] button');
-                        if (btn) btn.click();
-                    }
-                });
-            });
-        }
-        bindCardClicks();
-        setTimeout(bindCardClicks, 300);
-        setTimeout(bindCardClicks, 800);
-    })();
-    </script>
-    """)
+# ================= DISPARO EXCLUSIVO DOS MODAIS =================
+# Previne colisão StreamlitInvalidLayoutContextError ("Apenas uma caixa de diálogo pode ser aberta por vez")
+if st.session_state.get("prod_modal_gerenciar_id"):
+    p_id = st.session_state["prod_modal_gerenciar_id"]
+    p_selecionado = next((item for item in produtos_todos if item["id"] == p_id), None)
+    if p_selecionado:
+        dialog_gerenciar_produto(p_selecionado)
+    else:
+        st.session_state["prod_modal_gerenciar_id"] = None
+elif st.session_state.get("abrir_modal_novo_prod"):
+    dialog_novo_produto()
 
 # Rodapé Executivo
 ui_components.render_footer()

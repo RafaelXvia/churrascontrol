@@ -2,8 +2,8 @@ import os
 import streamlit as st
 import urllib.parse
 import html
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 def detectar_base_url() -> str:
     """Detecta automaticamente o domínio base (Discloud HTTPS, ambiente de produção ou localhost)."""
@@ -38,8 +38,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 1. Guarda de segurança restrita estritamente ao perfil 'gerente'
-usuario_logado = ui_components.verificar_permissao_acesso(["gerente"])
+# 1. Guarda de segurança RBAC: apenas Gerente e Caixa podem administrar QR Codes e Mesas
+usuario_logado = ui_components.verificar_permissao_acesso(["gerente", "caixa"])
 
 # Oculta sidebar nativa para garantir separação total da navegação
 st.markdown("""
@@ -138,7 +138,7 @@ def painel_central_qrcodes():
     # Barra de apoio discreta no topo para voltar ao sistema ou ver status
     col_back, col_title_head, col_timer = st.columns([1, 3, 2])
     with col_back:
-        st.markdown('<a href="/Salao_e_Mesas" target="_self" style="text-decoration:none;"><button style="background:#262a34; color:#fff; border:1px solid #444; border-radius:8px; padding:8px 16px; cursor:pointer; font-weight:600; width:100%;">← Voltar ao Salão</button></a>', unsafe_allow_html=True)
+        st.markdown('<a href="/Salao_e_Mesas" target="_self" style="text-decoration:none;"><button style="background:#262a34; color:#fff; border:1px solid #444; border-radius:8px; padding:8px 16px; cursor:pointer; font-weight:600; width:100%;">Voltar ao Salão</button></a>', unsafe_allow_html=True)
     with col_title_head:
         st.markdown('<h2 style="margin:0; color:#fff; font-weight:800;">Central de QR Codes das Mesas (Simulador Físico)</h2>', unsafe_allow_html=True)
         st.caption("Página isolada que simula as placas das mesas físicas. O QR Code só muda quando você clica em Atualizar.")

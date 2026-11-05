@@ -1,0 +1,663 @@
+{
+  "produto": [
+    {
+      "id": 6,
+      "created_at": 1752247941611,
+      "codigo_pdv": "6",
+      "nome": "Bambá de Couve",
+      "descricao": "Mingau de milho cremoso com couve refogada e linguiça frita, acompanhado de torresmo e arroz.",
+      "qtd_disp": 20,
+      "url_imagem": "https://i.imgur.com/TqZrOp8.jpeg",
+      "preco": 28,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": true
+    },
+    {
+      "id": 1,
+      "created_at": 1752247567728,
+      "codigo_pdv": "1",
+      "nome": "Tutu à Mineira",
+      "descricao": "Feijão refogado e engrossado com farinha de mandioca, servido com torresmo crocante, couve refogada, ovo frito e arroz branco.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/f8OmDlH.jpeg",
+      "preco": 40.5,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": true
+    },
+    {
+      "id": 11,
+      "created_at": 1752248148581,
+      "codigo_pdv": "10",
+      "nome": "Suco de Laranja Natural",
+      "descricao": "Suco fresco de laranjas selecionadas, adoçado ou natural.",
+      "qtd_disp": 50,
+      "url_imagem": "https://i.imgur.com/VjorB1O.jpeg",
+      "preco": 10,
+      "precisa_produzir": false,
+      "categoria": "Bebidas",
+      "disponivel": true
+    },
+    {
+      "id": 13,
+      "created_at": 1752248185023,
+      "codigo_pdv": "12",
+      "nome": "Suco de Goiaba",
+      "descricao": "Suco cremoso de goiaba, feito com fruta fresca.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/M3ge2PL.jpeg",
+      "preco": 16.33,
+      "precisa_produzir": false,
+      "categoria": "Carnes",
+      "disponivel": true
+    },
+    {
+      "id": 117,
+      "created_at": 1790862661850,
+      "codigo_pdv": "15",
+      "nome": "Picanha Smokehouse Parrilla",
+      "descricao": "Picanha maturada na parrilla com chimichurri artesanal.",
+      "qtd_disp": 25,
+      "url_imagem": "https://i.imgur.com/VjorB1O.jpeg",
+      "preco": 69.9,
+      "precisa_produzir": true,
+      "categoria": "Carnes",
+      "disponivel": true
+    },
+    {
+      "id": 2,
+      "created_at": 1752247858759,
+      "codigo_pdv": "2",
+      "nome": "Frango com Quiabo",
+      "descricao": "Coxas e sobrecoxas de frango cozidas em molho caseiro, acompanhadas de quiabo refogado, angu cremoso e arroz soltinho.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/FnpgHh4.jpeg",
+      "preco": 30.32,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": true
+    },
+    {
+      "id": 3,
+      "created_at": 1752247874935,
+      "codigo_pdv": "3",
+      "nome": "Feijoada Mineira",
+      "descricao": "Feijoada completa com carnes suínas, linguiça, paio, costelinha, servida com couve, farofa, laranja e arroz branco.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/LKstJgW.jpeg",
+      "preco": 45,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": false
+    },
+    {
+      "id": 4,
+      "created_at": 1752247912304,
+      "codigo_pdv": "4",
+      "nome": "Vaca Atolada",
+      "descricao": "Costela bovina cozida lentamente com mandioca macia, temperada com ervas, acompanhada de arroz e cheiro-verde.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/ggAIiWT.jpeg",
+      "preco": 38,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": false
+    },
+    {
+      "id": 5,
+      "created_at": 1752247941372,
+      "codigo_pdv": "5",
+      "nome": "Tropeiro",
+      "descricao": "Feijão tropeiro com linguiça, bacon, torresmo, ovo, farofa e couve crocante, servido com arroz branco.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/w1Ztl50.jpeg",
+      "preco": 34,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": false
+    },
+    {
+      "id": 7,
+      "created_at": 1752248016709,
+      "codigo_pdv": "7",
+      "nome": "Lombo com Canjiquinha",
+      "descricao": "Lombo suíno assado, servido com canjiquinha temperada e couve à mineira.",
+      "qtd_disp": 10,
+      "url_imagem": "https://i.imgur.com/EHR7JvI.jpeg",
+      "preco": 36,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": false
+    },
+    {
+      "id": 8,
+      "created_at": 1752248057519,
+      "codigo_pdv": "8",
+      "nome": "Carne de Panela",
+      "descricao": "Carne bovina cozida em molho rústico com batatas, acompanhada de arroz, feijão e macarrão caseiro.",
+      "qtd_disp": 40,
+      "url_imagem": "https://i.imgur.com/WLnQx5P.jpeg",
+      "preco": 35,
+      "precisa_produzir": true,
+      "categoria": "Comida",
+      "disponivel": false
+    },
+    {
+      "id": 10,
+      "created_at": 1752248102638,
+      "codigo_pdv": "9",
+      "nome": "Costelinha com Ora-pro-nóbis",
+      "descricao": "Costelinha suína frita, acompanhada de ora-pro-nóbis refogada, angu e arroz branco.",
+      "qtd_disp": 30,
+      "url_imagem": "https://i.imgur.com/djE61fW.jpeg",
+      "preco": 40,
+      "precisa_produzir": true,
+      "categoria": "Promoção",
+      "disponivel": true
+    },
+    {
+      "id": 12,
+      "created_at": 1752248175298,
+      "codigo_pdv": "11",
+      "nome": "Suco de Caju",
+      "descricao": "Suco refrescante de caju, preparado com polpa natural.",
+      "qtd_disp": 20,
+      "url_imagem": "https://i.imgur.com/p26Fved.jpeg",
+      "preco": 10,
+      "precisa_produzir": false,
+      "categoria": "Promoção",
+      "disponivel": false
+    },
+    {
+      "id": 14,
+      "created_at": 1752248246108,
+      "codigo_pdv": "13",
+      "nome": "Suco de Maracujá",
+      "descricao": "Suco de maracujá natural, com toque azedinho e refrescante",
+      "qtd_disp": 20,
+      "url_imagem": "https://i.imgur.com/s6AvzxI.jpeg",
+      "preco": 11,
+      "precisa_produzir": false,
+      "categoria": "Bebida",
+      "disponivel": true
+    },
+    {
+      "id": 15,
+      "created_at": 1774652688772,
+      "codigo_pdv": "14",
+      "nome": "Suco de Cupuaçu",
+      "descricao": "Suco exótico de cupuaçu, típico do interior mineiro.",
+      "qtd_disp": 10,
+      "url_imagem": "https://i.imgur.com/04zADDs.jpeg",
+      "preco": 13,
+      "precisa_produzir": false,
+      "categoria": "Bebida",
+      "disponivel": true
+    }
+  ],
+  "cliente": [
+    {
+      "id": 1,
+      "created_at": 1779803464440,
+      "user_id": 1,
+      "celular": "(11)11111-1111",
+      "cpf": "536.014.128-02",
+      "status_cliente_id": 1,
+      "_user_1": {
+        "id": 1,
+        "created_at": 1779803464363,
+        "name": "Rafael",
+        "email": "paiva@gmail.com",
+        "account_id": 0,
+        "role": "",
+        "papel_id": 5,
+        "password_reset": []
+      }
+    }
+  ],
+  "pedido": [
+    {
+      "id": 1,
+      "created_at": 1778626373174,
+      "total": 3000,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 4,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 2,
+      "created_at": 1778797509509,
+      "total": 192,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 3,
+      "created_at": 1778799703491,
+      "total": 360,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 4,
+      "created_at": 1778800058445,
+      "total": 120,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 5,
+      "created_at": 1778800339315,
+      "total": 160,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 6,
+      "created_at": 1778800847009,
+      "total": 160,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 7,
+      "created_at": 1779316890401,
+      "total": 170,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 8,
+      "created_at": 1779803974394,
+      "total": 150,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 9,
+      "created_at": 1779805279386,
+      "total": 180,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 10,
+      "created_at": 1779805357993,
+      "total": 0,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 11,
+      "created_at": 1779805612984,
+      "total": 90,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 12,
+      "created_at": 1779883996967,
+      "total": 70,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 13,
+      "created_at": 1779884014398,
+      "total": 0,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 14,
+      "created_at": 1780006023746,
+      "total": 50.32,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    },
+    {
+      "id": 15,
+      "created_at": 1780006866726,
+      "total": 41.32,
+      "nfc_e": null,
+      "cod_entrega": null,
+      "cliente_id": 3,
+      "status_pedido_id": 1
+    }
+  ],
+  "item": [
+    {
+      "id": 1,
+      "created_at": 1778799704957,
+      "pedido_id": 3,
+      "qtd": 8,
+      "valor_unit": 40,
+      "produto_id": 10,
+      "status_item_id": 1
+    },
+    {
+      "id": 6,
+      "created_at": 1779316890990,
+      "pedido_id": 7,
+      "qtd": 3,
+      "valor_unit": 30,
+      "produto_id": 9,
+      "status_item_id": 1
+    },
+    {
+      "id": 3,
+      "created_at": 1778800059181,
+      "pedido_id": 4,
+      "qtd": 3,
+      "valor_unit": 40,
+      "produto_id": 10,
+      "status_item_id": 1
+    },
+    {
+      "id": 4,
+      "created_at": 1778800339970,
+      "pedido_id": 5,
+      "qtd": 4,
+      "valor_unit": 40,
+      "produto_id": 10,
+      "status_item_id": 1
+    },
+    {
+      "id": 5,
+      "created_at": 1778800847712,
+      "pedido_id": 6,
+      "qtd": 4,
+      "valor_unit": 40,
+      "produto_id": 10,
+      "status_item_id": 1
+    },
+    {
+      "id": 7,
+      "created_at": 1779316891482,
+      "pedido_id": 7,
+      "qtd": 2,
+      "valor_unit": 40,
+      "produto_id": 10,
+      "status_item_id": 1
+    },
+    {
+      "id": 8,
+      "created_at": 1779803974947,
+      "pedido_id": 8,
+      "qtd": 5,
+      "valor_unit": 30,
+      "produto_id": 9,
+      "status_item_id": 1
+    },
+    {
+      "id": 9,
+      "created_at": 1779805280059,
+      "pedido_id": 9,
+      "qtd": 6,
+      "valor_unit": 30,
+      "produto_id": 9,
+      "status_item_id": 1
+    },
+    {
+      "id": 10,
+      "created_at": 1779805613605,
+      "pedido_id": 11,
+      "qtd": 3,
+      "valor_unit": 30,
+      "produto_id": 9,
+      "status_item_id": 1
+    },
+    {
+      "id": 11,
+      "created_at": 1779883997729,
+      "pedido_id": 12,
+      "qtd": 2,
+      "valor_unit": 30,
+      "produto_id": 9,
+      "status_item_id": 1
+    },
+    {
+      "id": 12,
+      "created_at": 1779883998826,
+      "pedido_id": 12,
+      "qtd": 1,
+      "valor_unit": 10,
+      "produto_id": 11,
+      "status_item_id": 1
+    },
+    {
+      "id": 13,
+      "created_at": 1780006024375,
+      "pedido_id": 14,
+      "qtd": 2,
+      "valor_unit": 10,
+      "produto_id": 11,
+      "status_item_id": 1
+    },
+    {
+      "id": 14,
+      "created_at": 1780006024794,
+      "pedido_id": 14,
+      "qtd": 1,
+      "valor_unit": 30.32,
+      "produto_id": 2,
+      "status_item_id": 1
+    },
+    {
+      "id": 15,
+      "created_at": 1780006867238,
+      "pedido_id": 15,
+      "qtd": 1,
+      "valor_unit": 11,
+      "produto_id": 14,
+      "status_item_id": 1
+    },
+    {
+      "id": 16,
+      "created_at": 1780006867675,
+      "pedido_id": 15,
+      "qtd": 1,
+      "valor_unit": 30.32,
+      "produto_id": 2,
+      "status_item_id": 1
+    }
+  ],
+  "papel": [
+    {
+      "id": 1,
+      "created_at": 1774272985023,
+      "papel": "Admin"
+    },
+    {
+      "id": 2,
+      "created_at": 1774272989740,
+      "papel": "Cozinheiro"
+    },
+    {
+      "id": 3,
+      "created_at": 1774272995832,
+      "papel": "Atendente"
+    },
+    {
+      "id": 4,
+      "created_at": 1774273001725,
+      "papel": "Auxiliar de Cozinha"
+    },
+    {
+      "id": 5,
+      "created_at": 1774273010583,
+      "papel": "Entregador"
+    },
+    {
+      "id": 6,
+      "created_at": 1774273015871,
+      "papel": "Cliente"
+    }
+  ],
+  "faq": [
+    {
+      "id": 1,
+      "created_at": 1774272855297,
+      "pergunta": "Quantas pessoas uma porção de Feijoada serve ?",
+      "resposta": "Os pratos são individuais"
+    },
+    {
+      "id": 2,
+      "created_at": 1774272880522,
+      "pergunta": "Quais as formas de pagamentos aceitas ?",
+      "resposta": "Cartão de crédito apenas"
+    },
+    {
+      "id": 3,
+      "created_at": 1774272908619,
+      "pergunta": "Qual o tempo de entrega médio ?",
+      "resposta": "30 minutos a partir da conclusão do pedido"
+    }
+  ],
+  "endereco": [
+    {
+      "id": 4,
+      "created_at": 1778626777021,
+      "cliente_id": 3,
+      "logradouro": "jefinho",
+      "numero": "321",
+      "complemento": "jefinho",
+      "bairro": "jefinho",
+      "referencia": "jefinho",
+      "padrao": false,
+      "cep_id": 5
+    },
+    {
+      "id": 3,
+      "created_at": 1777930221194,
+      "cliente_id": 2,
+      "logradouro": "logoali",
+      "numero": "12345666",
+      "complemento": "logoali",
+      "bairro": "logoali",
+      "referencia": "logoali",
+      "padrao": false,
+      "cep_id": 3
+    },
+    {
+      "id": 5,
+      "created_at": 1779803241254,
+      "cliente_id": 0,
+      "logradouro": "Avenida Aníbal Correia",
+      "numero": "123123",
+      "complemento": "Qwe",
+      "bairro": "",
+      "referencia": "Qwe",
+      "padrao": true,
+      "cep_id": 6
+    },
+    {
+      "id": 6,
+      "created_at": 1779803465465,
+      "cliente_id": 0,
+      "logradouro": "Avenida Aníbal Correia",
+      "numero": "1725",
+      "complemento": "Asd",
+      "bairro": "",
+      "referencia": "Asd",
+      "padrao": true,
+      "cep_id": 0
+    },
+    {
+      "id": 1,
+      "created_at": 1776701030670,
+      "cliente_id": 1,
+      "logradouro": "avenida anibal correia",
+      "numero": "1725",
+      "complemento": "",
+      "bairro": "votupoca",
+      "referencia": "",
+      "padrao": true,
+      "cep_id": 6
+    },
+    {
+      "id": 2,
+      "created_at": 1776701060405,
+      "cliente_id": 1,
+      "logradouro": "rua da gloria",
+      "numero": "25",
+      "complemento": "logo ali",
+      "bairro": "quse la",
+      "referencia": "muito longe",
+      "padrao": false,
+      "cep_id": 4
+    }
+  ],
+  "cep": [
+    {
+      "id": 1,
+      "created_at": 1776701060237,
+      "cep": "654",
+      "uf": "testee",
+      "cidade": "proximo3"
+    },
+    {
+      "id": 2,
+      "created_at": 1776701217011,
+      "cep": "1234",
+      "uf": "12345 nova estado",
+      "cidade": "12345 nova cidade"
+    },
+    {
+      "id": 3,
+      "created_at": 1777930220994,
+      "cep": "97456321",
+      "uf": "logoali",
+      "cidade": "logoali"
+    },
+    {
+      "id": 4,
+      "created_at": 1777930516712,
+      "cep": "35789456",
+      "uf": "34682 estado",
+      "cidade": "34682 cidade"
+    },
+    {
+      "id": 5,
+      "created_at": 1778626776872,
+      "cep": "321",
+      "uf": "jefinho",
+      "cidade": "jefinho"
+    },
+    {
+      "id": 6,
+      "created_at": 1779803241082,
+      "cep": "06447010",
+      "uf": "",
+      "cidade": ""
+    }
+  ]
+}

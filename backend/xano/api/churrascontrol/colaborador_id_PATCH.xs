@@ -2,15 +2,23 @@ query "colaborador/{colaborador_id}" verb=PATCH {
   api_group = "ChurrasControl"
   input {
     int colaborador_id
+    text? nome filters=trim
+    text? email filters=trim|lower
+    text? numero filters=trim
+    text? cargo filters=trim
     text? senha_hash filters=trim
     bool? primeiro_acesso
     bool? ativo
   }
   stack {
-    db.edit colaborador {
+    db.patch colaborador {
       field_name = "id"
       field_value = $input.colaborador_id
       data = {
+        nome            : $input.nome,
+        email           : $input.email,
+        numero          : $input.numero,
+        cargo           : $input.cargo,
         senha_hash      : $input.senha_hash,
         primeiro_acesso : $input.primeiro_acesso,
         ativo           : $input.ativo

@@ -16,8 +16,8 @@ if sys.platform == "win32":
 
 import streamlit as st
 from datetime import datetime
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 st.set_page_config(
     page_title="ChurrasControl - Painel Operacional",
@@ -27,6 +27,11 @@ st.set_page_config(
 
 # 1. Guarda de segurança e autenticação (exige login e primeiro acesso redefinido)
 usuario = ui_components.exigir_autenticacao()
+
+# Caixa acessa estritamente Salão & Mesas e Cardápio; redireciona imediatamente se tentar acessar o Painel Geral
+if str(usuario.get("cargo", "")).lower() == "caixa":
+    st.switch_page("pages/1_Salao_e_Mesas.py")
+
 is_gerente = (usuario and str(usuario.get("cargo", "")).lower() == "gerente")
 
 # Renderiza a barra de navegação no topo e remove a sidebar
@@ -206,6 +211,99 @@ if is_gerente:
         """, unsafe_allow_html=True)
         if st.button("Acessar Relatórios & PDF", key="btn_card_relatorios", use_container_width=True):
             st.switch_page("pages/3_Relatorios.py")
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    mod4, mod5, mod6 = st.columns(3)
+
+    with mod4:
+        st.markdown("""
+        <div class="cc-module-card cc-clickable-card theme-amber">
+            <div>
+                <div class="cc-module-header">
+                    <div class="cc-module-left">
+                        <div class="cc-module-icon icon-amber">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="cc-module-titles">
+                            <h4>4. Colaboradores</h4>
+                            <span class="badge-amber">Controle de Acessos</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="cc-module-desc">
+                    Gestão da equipe, controle de cargos RBAC (Caixa e Gerente) e redefinição segura de credenciais.
+                </p>
+            </div>
+            <div class="cc-module-action" style="color: #f59e0b !important;">
+                <span>Acessar Equipe</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Acessar Colaboradores", key="btn_card_colabs", use_container_width=True):
+            st.switch_page("pages/6_Colaboradores.py")
+
+    with mod5:
+        st.markdown("""
+        <div class="cc-module-card cc-clickable-card theme-blue">
+            <div>
+                <div class="cc-module-header">
+                    <div class="cc-module-left">
+                        <div class="cc-module-icon icon-blue">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div class="cc-module-titles">
+                            <h4>5. Auditoria Operacional</h4>
+                            <span class="badge-blue">Trilha de Segurança</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="cc-module-desc">
+                    Rastreabilidade completa de ações, cancelamentos, abertura de mesas e eventos do sistema.
+                </p>
+            </div>
+            <div class="cc-module-action" style="color: #60a5fa !important;">
+                <span>Acessar Auditoria</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Acessar Auditoria", key="btn_card_auditoria", use_container_width=True):
+            st.switch_page("pages/7_Auditoria.py")
+
+    with mod6:
+        st.markdown("""
+        <div class="cc-module-card cc-clickable-card theme-emerald" style="border-color: rgba(16, 185, 129, 0.4);">
+            <div>
+                <div class="cc-module-header">
+                    <div class="cc-module-left">
+                        <div class="cc-module-icon icon-emerald">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
+                            </svg>
+                        </div>
+                        <div class="cc-module-titles">
+                            <h4>6. Assistente IA</h4>
+                            <span class="badge-emerald" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">RAG & Ontologia</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="cc-module-desc">
+                    Análise conversacional de faturamento, setores de mesas, pratos mais vendidos e estoque com IA executiva.
+                </p>
+            </div>
+            <div class="cc-module-action" style="color: #10b981 !important;">
+                <span>Conversar com o Assistente</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Conversar com o Assistente IA", key="btn_card_ia", use_container_width=True):
+            st.switch_page("pages/8_Assistente_IA.py")
 
 else:
     # Perfil Caixa: foco total no Salão e Mesas

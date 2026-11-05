@@ -1,6 +1,6 @@
 import streamlit as st
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 st.set_page_config(
     page_title="Salão e Mesas - ChurrasControl",
@@ -13,6 +13,34 @@ usuario_logado = ui_components.exigir_autenticacao()
 
 # Navbar superior unificada
 ui_components.render_navbar(active_tab="salao")
+
+st.markdown("""
+<style>
+div[class*="st-key-dec_it_"] button,
+div[class*="st-key-inc_it_"] button,
+div[class*="st-key-rm_it_"] button {
+    font-size: 1.12rem !important;
+    font-weight: 800 !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+}
+div[class*="st-key-rm_it_"] button {
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    font-size: 1.2rem !important;
+}
+div[class*="st-key-rm_it_"] button:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 if "mesa_selecionada" not in st.session_state:
     st.session_state["mesa_selecionada"] = None
@@ -83,7 +111,7 @@ def renderizar_painel_salao():
             </div>
             """, unsafe_allow_html=True)
         with c_sync_btn:
-            if st.button("🔄 Atualizar", key="btn_manual_refresh_salao", use_container_width=True, help="Recarregar salão agora"):
+            if st.button("Atualizar", key="btn_manual_refresh_salao", use_container_width=True, help="Recarregar salão agora"):
                 st.rerun()
 
     # Layout em duas colunas responsivas: Salão (7) e Comanda (5)
@@ -266,7 +294,7 @@ def renderizar_painel_salao():
                     st.caption("Nenhum item lançado até o momento.")
                 else:
                     for it in itens:
-                        it_col1, it_col2, it_col3, it_col4, it_col5 = st.columns([5, 2.5, 1.5, 1.5, 1.5])
+                        it_col1, it_col2, it_col3, it_col4, it_col5 = st.columns([4.8, 2.2, 1.3, 1.3, 1.4], vertical_alignment="center")
                         with it_col1:
                             obs_html = f'<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 2px;">Obs: {it["observacao"]}</div>' if it.get("observacao") else ''
                             st.markdown(f"""
@@ -279,7 +307,7 @@ def renderizar_painel_salao():
                         with it_col2:
                             st.markdown(f"<div style='font-weight: 700; color: #fbbf24; text-align: right;'>R$ {float(it['subtotal']):.2f}</div>", unsafe_allow_html=True)
                         with it_col3:
-                            # Botão para diminuir a quantidade em 1
+                            # Botão para diminuir a quantidade em 1 com ícone nítido
                             if st.button("-", key=f"dec_it_{it['id']}", help="Diminuir 1 unidade", use_container_width=True):
                                 nova_qtd = it["quantidade"] - 1
                                 if nova_qtd > 0:
@@ -288,13 +316,14 @@ def renderizar_painel_salao():
                                     data_manager.remover_item_comanda(it["id"])
                                 st.rerun()
                         with it_col4:
-                            # Botão para aumentar a quantidade em 1
+                            # Botão para aumentar a quantidade em 1 com ícone nítido
                             if st.button("+", key=f"inc_it_{it['id']}", help="Aumentar 1 unidade", use_container_width=True):
                                 nova_qtd = it["quantidade"] + 1
                                 data_manager.editar_item_comanda(it["id"], nova_qtd, it["preco_momento"], it.get("observacao", ""))
                                 st.rerun()
                         with it_col5:
-                            if st.button("Remover", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
+                            # Botão para exclusão com ícone X claro
+                            if st.button("X", key=f"rm_it_{it['id']}", help="Excluir item da comanda", use_container_width=True):
                                 data_manager.remover_item_comanda(it["id"])
                                 st.rerun()
                         st.divider()
@@ -306,7 +335,17 @@ def renderizar_painel_salao():
                 </div>
                 """, unsafe_allow_html=True)
 
-                taxa_servico = st.checkbox("Aplicar Taxa de Serviço Sugerida (10%)", value=True)
+                taxa_servico_atual = bool(comanda.get("taxa_servico", True))
+                def _on_change_taxa(cid=sel_id):
+                    novo_val = st.session_state.get(f"chk_taxa_servico_{cid}")
+                    data_manager.alternar_taxa_servico_comanda(cid, bool(novo_val))
+
+                taxa_servico = st.checkbox(
+                    "Aplicar Taxa de Serviço Sugerida (10%)",
+                    value=taxa_servico_atual,
+                    key=f"chk_taxa_servico_{sel_id}",
+                    on_change=_on_change_taxa
+                )
                 total_final = total_comanda * 1.10 if taxa_servico else total_comanda
                 pax = int(comanda.get("qtd_pessoas", 1)) or 1
                 por_pessoa = total_final / pax
@@ -336,7 +375,8 @@ def renderizar_painel_salao():
                     if st.button("Confirmar Pagamento & Liberar Mesa", type="primary", use_container_width=True):
                         data_manager.fechar_comanda(sel_id, total_final, taxa_servico)
                         st.session_state["mesa_selecionada"] = None
-                        st.query_params.clear()
+                        st.query_params.pop("mesa_id", None)
+                        st.query_params.pop("comanda_id", None)
                         st.success("Comanda encerrada e mesa liberada!")
                         st.rerun()
                 with c_fc2:
@@ -347,7 +387,8 @@ def renderizar_painel_salao():
                         if st.button("Executar Cancelamento", type="secondary", disabled=not confirmar_cancel, use_container_width=True):
                             data_manager.cancelar_comanda(sel_id)
                             st.session_state["mesa_selecionada"] = None
-                            st.query_params.clear()
+                            st.query_params.pop("mesa_id", None)
+                            st.query_params.pop("comanda_id", None)
                             st.rerun()
 
 renderizar_painel_salao()

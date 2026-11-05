@@ -1,8 +1,8 @@
 import html
 from datetime import datetime
 import streamlit as st
-import data_manager
-import ui_components
+from backend.database import data_manager
+from frontend.components import ui_components
 
 st.set_page_config(
     page_title="Relatórios e Dashboard - ChurrasControl",
