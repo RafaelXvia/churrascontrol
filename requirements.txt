@@ -2,3 +2,6 @@ streamlit
 httpx
 reportlab
 cryptography
+google-genai
+pydantic
+python-dotenv

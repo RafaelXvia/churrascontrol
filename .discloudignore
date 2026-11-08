@@ -3,7 +3,6 @@
 .gemini
 __pycache__
 venv
-.env
 .vscode
 .cache
 test_*.py
@@ -11,8 +10,16 @@ tools
 docs
 openspec
 xano
+backend/xano
+backend/backups
+backups
 scratch
 churras_data.json
 *.zip
 *.db-shm
 *.db-wal
+*_teste.db
+*_test.db
+churrascontrol_test_*.db
+temp/
+tmp/

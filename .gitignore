@@ -15,12 +15,22 @@ ENV/
 .idea/
 .cache/
 
-# Arquivos temporários do SQLite WAL
-churrascontrol.db-shm
-churrascontrol.db-wal
+# Arquivos temporários e journals do SQLite
+*.db-shm
+*.db-wal
+*_teste.db
+*_test.db
+churrascontrol_teste.db
+churrascontrol_test_*.db
+
+# Diretórios temporários
+temp/
+tmp/
 
 # Arquivos compactados residuais
 *.zip
 
 # Variáveis de ambiente locais
 .env
+.env.*
+!.env.example

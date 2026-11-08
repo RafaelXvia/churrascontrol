@@ -1,0 +1,20 @@
+services:
+  churrascontrol:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: churrascontrol_512m
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DOCKER_CONTAINER=1
+      - MALLOC_TRIM_THRESHOLD_=65536
+      - PYTHONOPTIMIZE=1
+      - PYTHONDONTWRITEBYTECODE=1
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.50
+    restart: unless-stopped
+
