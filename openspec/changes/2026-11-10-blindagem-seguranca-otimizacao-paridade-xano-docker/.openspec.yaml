@@ -1,0 +1,13 @@
+id: "2026-11-10-blindagem-seguranca-otimizacao-paridade-xano-docker"
+title: "Blindagem de Segurança, Otimização de Queries, Paridade Completa de Colaboradores no Xano e Benchmark Docker (512MB RAM / 0.50 CPU)"
+created_at: "2026-11-10"
+status: "proposed"
+author: "Antigravity AI & Rafael"
+description: >
+  Correção integral das vulnerabilidades de segurança (remoção de chaves hardcoded, PBKDF2-HMAC-SHA256,
+  validação criptográfica de tokens QR Code no Cardápio do Cliente, guarda RBAC em Mesas QR Codes e rate limit de login),
+  eliminação de gargalos de performance (queries N+1 em relatórios e salão, modo WAL consistente, remoção de pandas na auditoria,
+  upsert seguro na sincronização de produtos e pruning de tabelas temporárias), paridade 100% bidirecional da tabela e rotas de
+  colaboradores com o Xano e execução de teste de carga automatizado E2E em container Docker restrito a 512MB RAM e 0.50 CPU
+  (sem qualquer deploy na Discloud).
+

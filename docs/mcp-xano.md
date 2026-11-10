@@ -52,7 +52,7 @@ O servidor foi configurado no projeto através do padrão aberto MCP (Model Cont
 
 ## 4. Como Ativar e Testar no VS Code
 
-1. Abra o projeto no **VS Code** na pasta `crudfaculdade`.
+1. Abra o projeto no **VS Code** na pasta raiz do repositório clonado.
 2. Abra a Command Palette:
    - `Ctrl + Shift + P`
 3. Digite e selecione:

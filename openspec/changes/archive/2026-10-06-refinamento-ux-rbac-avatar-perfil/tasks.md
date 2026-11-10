@@ -1,0 +1,41 @@
+# Tarefas de Implementação
+
+- [x] 1. Redesenhar Tela de Login em `ui_components.py` <!-- id: 1 -->
+  - Implementar visual moderno, glassmorphism, tipografia, badge AES-256 e formulário encapsulado.
+- [x] 2. Implementar Avatar Circular e Modal de Perfil/Troca de Senha em `ui_components.py` <!-- id: 2 -->
+  - Criar avatar com inicial do nome na navbar (desktop e mobile).
+  - Implementar modal com dados somente leitura e formulário de alteração de senha.
+- [x] 3. Liberar Acesso Público em `pages/4_Mesas_QRCodes.py` <!-- id: 3 -->
+  - Remover guarda de autenticação obrigatória de gerente.
+- [x] 4. Aprimorar Cardápio do Cliente em `pages/5_Cardapio_Cliente.py` <!-- id: 4 -->
+  - Remover botão separado "Pedir".
+  - Tornar o card totalmente clicável com adição direta.
+  - Eliminar conflito de múltiplos diálogos no Streamlit (`StreamlitInvalidLayoutContextError`).
+- [x] 5. Ergonomia dos Botões em `pages/1_Salao_e_Mesas.py` <!-- id: 5 -->
+  - Ajustar botões de incremento/decremento com ícones maiores (`➕` e `➖`).
+  - Substituir botão "Remover" por ícone `✖`.
+- [x] 6. Função de Edição de Colaborador em `data_manager.py` e Modal em `pages/6_Colaboradores.py` <!-- id: 6 -->
+  - Criar função com re-criptografia completa.
+  - Adicionar botão e modal de edição para todos os dados pelo gerente.
+- [x] 7. Aplicar RBAC Estrito para Caixa em `app.py`, `pages/2_Cardapio.py` e `ui_components.py` <!-- id: 7 -->
+  - Permitir Caixa em `2_Cardapio.py`.
+  - Redirecionar Caixa em `app.py` para `1_Salao_e_Mesas.py`.
+  - Ocultar abas não permitidas na navbar para Caixa.
+- [x] 8. Sistema de Recuperação Autônoma de Senha e Preservação de Credenciais <!-- id: 8 -->
+  - Criar função `recuperar_senha_colaborador` com verificação de telefone e chave mestre.
+  - Adicionar modal `@st.dialog("Recuperar Senha & Acesso")` na tela de login.
+  - Restaurar hash da senha alterada pelo usuário e proteger credenciais nos testes unitários.
+- [x] 9. Testes e Validação Completa <!-- id: 9 -->
+  - Executar suíte de testes automatizados e verificar servidor local.
+- [x] 10. Persistência de Sessão no F5 via Tokens SQLite <!-- id: 10 -->
+  - Criar tabela `sessoes_ativas` e vincular token em `st.query_params`.
+  - Restaurar usuário logado automaticamente ao recarregar a página sem pedir login.
+- [x] 11. Modal Interativo de Detalhes do Prato no Cardápio do Cliente <!-- id: 11 -->
+  - Modal `@st.dialog("Detalhes do Prato")` com foto, descrição completa, seletor de quantidade e observações para cozinha.
+  - Adição direta à comanda da mesa a partir do modal.
+- [x] 12. Purga e Reposição de Estoque em Mesas Canceladas <!-- id: 12 -->
+  - Eliminar itens órfãos na tabela `itens_comanda` ao cancelar mesas ou comandas.
+  - Devolver quantidades de volta ao estoque em `produtos`.
+- [x] 13. Tela Completa de Auditoria & Trilha Operacional (`pages/7_Auditoria.py`) <!-- id: 13 -->
+  - Tabela `auditoria` no SQLite com registro de login, logout, falhas, senhas, edição de produtos e preços, comandas e colaboradores.
+  - Tela exclusiva para Gerente com KPIs, filtros por módulo/ação, busca textual e exportação CSV.

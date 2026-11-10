@@ -1,0 +1,9 @@
+id: "2026-10-07-assistente-ia-gerente-rag"
+title: "Assistente IA do Gerente com RAG Estruturado, Ontologia de Domínio e Fallback em Cascata"
+created_at: "2026-10-07"
+status: "archived"
+author: "Antigravity AI & Rafael"
+description: >
+  Implementação do Assistente IA para o perfil Gerente utilizando RAG estruturado sobre SQLite,
+  ontologia relacional de domínio (setores, turnos e sinônimos), conexão segura somente leitura (mode=ro),
+  catálogo analítico Pydantic, descoberta dinâmica e fallback em cascata com Google Gemini (google-genai).

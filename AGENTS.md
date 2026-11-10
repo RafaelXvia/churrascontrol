@@ -1,16 +1,16 @@
 # Diretrizes para Agentes de IA — ChurrasControl
 
 ## 1. Princípio Fundamental & Isolamento Estrito de Diretórios
-- **ESCOPO EXCLUSIVO DE MODIFICAÇÃO**: Todo o código, configurações, migrações e testes do projeto residem **EXCLUSIVAMENTE** dentro da pasta `crudfaculdade/`.
+- **ESCOPO DE MODIFICAÇÃO**: Todo o código, configurações, migrações e testes do projeto residem no escopo do repositório (`app.py`, `backend/`, `frontend/`, `pages/`, `tools/`, `docs/`, `openspec/`).
 - **PROIBIDO ALTERAR PASTAS EXTERNAS**:
-  - `material do professor/`: Diretório de **apenas leitura e consulta técnica**. Nunca criar, modificar, mover ou apagar nenhum arquivo nele.
-  - `discloud/` (na raiz do workspace): Diretório **reservado para backups manuais do usuário**. Jamais mexer, alterar ou apagar.
+  - `material do professor/`: Diretório de **apenas leitura e consulta técnica pedagógica**. Nunca criar, modificar, mover ou apagar nenhum arquivo nele.
+  - Pastas externas de backups manuais do usuário (ex: `discloud/` externa): Jamais mexer, alterar ou apagar.
 - Nenhuma alteração significativa de funcionalidade ou arquitetura deve ser executada sem prévio planejamento via OpenSpec (`spec-driven`).
 - Consulte sempre `docs/project-overview.md` e `docs/domain-model.md` antes de implementar novas features.
 
 ## 2. Padrões de Arquitetura e Código
-- **Backend**: Python 3.10+ utilizando FastAPI com tipagem estrita via Pydantic.
-- **Frontend**: O frontend do projeto deve ser implementado exclusivamente com **Streamlit**. Não introduza React, Vue, Angular, Next.js, Jinja2 ou outra tecnologia de frontend para substituir ou complementar o Streamlit, salvo quando houver uma alteração arquitetural explicitamente aprovada para o projeto.
+- **Backend**: Python 3.10+ modularizado (`backend/database/`, `backend/ai/`, `backend/xano/`) com tipagem e validações estritas via Pydantic.
+- **Frontend**: O frontend do projeto é implementado exclusivamente com **Streamlit** em padrão multi-page (`pages/`) com componentes modulares (`frontend/components/ui_components.py`). Não introduza React, Vue, Angular, Next.js, Jinja2 ou outra tecnologia de frontend para substituir ou complementar o Streamlit, salvo quando houver uma alteração arquitetural explicitamente aprovada para o projeto.
 - **Persistência**: Persistência relacional transacional em SQLite embutido (`churrascontrol.db` em modo WAL) com fila persistente de sincronização para o Xano (`fila_sincronizacao`).
 - **Imutabilidade Histórica**: Preços de itens lançados em comanda nunca devem depender de lookup dinâmico do produto em tempo de fechamento. Salve sempre `preco_momento` e `nome_produto_historico`.
 
@@ -57,4 +57,10 @@
 ## 6. Boas Práticas de Versionamento Git
 - Antes de iniciar modificações complexas, preservar a branch funcional estável (`funcional`).
 - Desenvolver e testar em branches de feature (`feature/<nome-da-funcionalidade>`).
-- Ao concluir e validar os testes e a documentação OpenSpec, realizar o merge na linha original principal do projeto (`main` / `master`), garantindo que o branch padrão permaneça 100% operacional.
+- Ao concluir e validar os testes e a documentação OpenSpec, realizar o merge na linha original principal do projeto (`main` / `master`), garantindo que o branch padrão permaneça 100% operacional.
+
+## 7. Proibição Estrita de Emojis em Todo o Projeto (Zero Emojis)
+- **REGRA INEGOCIÁVEL**: É expressamente proibido o uso de qualquer tipo de emoji em arquivos do repositório (código Python, Markdown, JSON, YAML, HTML, CSS, XanoScript, mensagens de erro, labels de botões, tooltips, modais, logs e toasts).
+- **Substituição Visual**: Caso seja necessário indicar ações ou status na interface, utilize exclusivamente texto claro e profissional ou ícones vetoriais SVG neutros/ícones de design system.
+- Não inserir badges, slogans ou menções a "Criptografia E-E AES-256" ou jargões desnecessários na tela de login e na interface, mantendo a estética visual limpa, corporativa e minimalista.
+

@@ -30,12 +30,12 @@ Restaurantes de pequeno e médio porte sofrem com perda de histórico de lançam
 - **Ferramentas de IA & MCP**: Xano Developer MCP (`@xano/developer-mcp`) integrado via `.vscode/mcp.json` e `.gemini/settings.json` para consulta e validação de XanoScript.
 
 ## 7. Diretrizes de Organização do Workspace
-- **Código da Aplicação**: Fica restrito e concentrado dentro da pasta `crudfaculdade/`.
-- **Material do Professor (`material do professor/`)**: Pasta externa dedicada estritamente à consulta pedagógica, manuais e documentações conceituais (somente leitura).
-- **Pasta Discloud (`discloud/` na raiz)**: Reservada para backups de segurança gerenciados pelo usuário. Nunca deve ser apagada ou manipulada por agentes automatizados.
+- **Código da Aplicação**: Reside na raiz do projeto (`app.py`, `backend/`, `frontend/`, `pages/`).
+- **Material de Consulta Pedagógica**: Pastas externas de material didático são dedicadas estritamente à consulta pedagógica (somente leitura).
+- **Backups de Contingência**: Pastas de backup gerenciadas pelo usuário são preservadas e nunca devem ser alteradas por agentes automatizados.
 
-## 8. Suíte de Ferramentas e Qualidade (`crudfaculdade/tools/`)
-Todas as rotinas de verificação, auditoria e testes automatizados estão centralizadas em `crudfaculdade/tools/`:
+## 8. Suíte de Ferramentas e Qualidade (`tools/`)
+Todas as rotinas de verificação, auditoria e testes automatizados estão centralizadas em `tools/`:
 - `run_all.py`: Execução consolidada de toda a bateria de testes com relatório executivo.
 - `db_diagnostics.py`: Diagnóstico em tempo real de integridade do SQLite (modo WAL), índices e monitoramento da fila de sincronização com o Xano.
-- Suítes de testes automatizados (`test_app.py`, `test_sqlite_sync.py`, `test_security_performance.py`, `test_cardapio_delivery.py`, `test_cardapio_cliente_qrcode.py`).
+- Suíte consolidada de testes automatizados (`test_suite.py`).

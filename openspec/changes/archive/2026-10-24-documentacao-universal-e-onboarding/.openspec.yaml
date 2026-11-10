@@ -1,0 +1,11 @@
+id: "2026-10-24-documentacao-universal-e-onboarding"
+title: "Documentação Universal, Onboarding para git clone e README Executivo do Repositório"
+created_at: "2026-10-24"
+status: "archived"
+author: "Antigravity AI & Rafael"
+description: >
+  Padronização e universalização de toda a documentação do projeto ChurrasControl.
+  Criação de README.md profissional e completo na raiz, com badges, arquitetura visual,
+  guia de início rápido passo a passo a partir de um 'git clone', gestão de dependências,
+  variáveis de ambiente (.env), tabela de credenciais de teste, instruções de testes
+  automatizados e saneamento de caminhos absolutos ou específicos de máquinas locais.

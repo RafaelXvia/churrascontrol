@@ -1,0 +1,10 @@
+id: "2026-10-24-sincronizacao-comandas-xano"
+title: "Sincronização Bidirecional e Auto-Recuperação de Comandas no Xano"
+created_at: "2026-10-24"
+status: "applied"
+author: "Antigravity AI & Rafael"
+description: >
+  Correção da integridade referencial entre itens_comanda e comandas no Xano.
+  Implementa sincronização de comandas no Xano no momento da abertura da mesa física
+  e no autoatendimento via QR Code do cliente, além de mecanismo defensivo de auto-criação
+  de comanda em comandas_itens_POST.xs, eliminando vínculos órfãos e falhas 404 no fechamento.

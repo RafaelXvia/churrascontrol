@@ -1,0 +1,8 @@
+schema: spec-driven
+version: 1.0.0
+id: 2026-10-06-refinamento-ux-rbac-avatar-perfil
+title: Refinamento UX, Login Moderno, Avatar de Perfil e RBAC Estrito para Caixa
+status: planned
+created: 2026-10-06
+authors:
+  - Antigravity

@@ -1,0 +1,11 @@
+id: "2026-10-24-saneamento-arquitetura-modular"
+title: "Saneamento de Arquivos Órfãos/Legados e Reestruturação Modular (Frontend, Backend & Xano)"
+created_at: "2026-10-24"
+status: "archived"
+author: "Antigravity AI & Rafael"
+description: >
+  Auditoria completa do repositório para identificação e remoção segura de arquivos órfãos,
+  caches residuais e bancos de dados transitórios de teste (ex: churrascontrol_teste.db).
+  Proposta de evolução arquitetural com segregação explícita entre Backend (persistência,
+  ontologia, assistente IA e esquemas Xano) e Frontend (componentes UI e telas Streamlit),
+  garantindo total retrocompatibilidade de imports, execução local, testes e deploy na Discloud.
