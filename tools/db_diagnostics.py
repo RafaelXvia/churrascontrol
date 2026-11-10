@@ -44,7 +44,7 @@ def main():
     # 1. Modo de Journal e Integridade
     cur.execute("PRAGMA journal_mode;")
     j_mode = cur.fetchone()[0]
-    print(f"[CONFIG] Modo de Journal: {j_mode.upper()} (Padrão: WAL)")
+    print(f"[CONFIG] Modo de Journal: {j_mode.upper()}")
 
     cur.execute("PRAGMA integrity_check;")
     integrity = cur.fetchone()[0]
@@ -60,7 +60,19 @@ def main():
     print("-" * 70)
     print("[TABELAS] Contagem de Registros:")
 
-    tabelas = ["produtos", "mesas", "comandas", "itens_comanda", "fila_sincronizacao"]
+    try:
+        from backend.database import data_manager
+        data_manager.init_db()
+    except Exception as e:
+        pass
+
+    tabelas = [
+        "produtos", "mesas", "comandas", "itens_comanda",
+        "colaboradores", "sessoes_ativas", "auditoria",
+        "qrcodes_mesas", "fila_sincronizacao",
+        "ontologia_conceitos", "ontologia_sinonimos", "ontologia_relacoes",
+        "chat_conversas", "chat_mensagens", "llm_fallback_logs"
+    ]
     for t in tabelas:
         try:
             cur.execute(f"SELECT COUNT(*) FROM {t}")
@@ -69,7 +81,17 @@ def main():
         except sqlite3.OperationalError as e:
             print(f"   * {t:<22}: [ERRO] ({e})")
 
-    # 2. Detalhamento das Mesas
+    # 2. Detalhamento de Comandas (histórico preservado)
+    try:
+        cur.execute("SELECT status, COUNT(*) as qtd, COALESCE(SUM(valor_total), 0.0) as total FROM comandas GROUP BY status")
+        status_comandas = cur.fetchall()
+        print("\n[COMANDAS] Detalhe por Status (Histórico Financeiro):")
+        for r in status_comandas:
+            print(f"   - {r['status']:<10}: {r['qtd']} comanda(s) | Total: R$ {float(r['total']):,.2f}")
+    except Exception as e:
+        print(f"   [ERRO] Detalhe de comandas: {e}")
+
+    # 3. Detalhamento das Mesas
     try:
         cur.execute("SELECT status, COUNT(*) as qtd FROM mesas GROUP BY status")
         status_mesas = cur.fetchall()

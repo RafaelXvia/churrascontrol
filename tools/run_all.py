@@ -7,6 +7,8 @@ Como usar:
 """
 import sys
 import os
+import shutil
+import tempfile
 import subprocess
 import time
 
@@ -14,17 +16,17 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
 os.environ["TESTING_ENV"] = "1"
 
+# Isolamento do banco: os testes rodam numa CÓPIA temporária do churrascontrol.db.
+# O banco real (histórico de vendas, comandas, itens e colaboradores) nunca é alterado pela suíte.
+PROD_DB_PATH = os.path.join(PROJECT_ROOT, "churrascontrol.db")
+_TEST_DB_DIR = tempfile.mkdtemp(prefix="churras_tests_")
+TEST_DB_PATH = os.path.join(_TEST_DB_DIR, "churrascontrol_test_suite.db")
+if os.path.exists(PROD_DB_PATH):
+    shutil.copy2(PROD_DB_PATH, TEST_DB_PATH)
+os.environ["CHURRAS_DB_PATH"] = TEST_DB_PATH
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
-TEST_FILES = [
-    "test_app.py",
-    "test_sqlite_sync.py",
-    "test_security_performance.py",
-    "test_cardapio_delivery.py",
-    "test_cardapio_cliente_qrcode.py",
-    "test_autenticacao_rbac.py",
-]
 
 def main():
     print("=" * 70)
@@ -32,64 +34,39 @@ def main():
     print("=" * 70)
     print(f"Diretório Raiz: {PROJECT_ROOT}")
     print(f"Diretório Tools: {TOOLS_DIR}")
+    print(f"Banco isolado de testes: {TEST_DB_PATH}")
     print("-" * 70)
 
-    sucessos = 0
-    falhas = 0
-    total_start = time.time()
+    start_t = time.time()
+    test_suite_path = os.path.join(TOOLS_DIR, "test_suite.py")
 
-    for idx, test_file in enumerate(TEST_FILES, start=1):
-        test_path = os.path.join(TOOLS_DIR, test_file)
-        if not os.path.exists(test_path):
-            print(f"[{idx}/{len(TEST_FILES)}] [FALHA] Arquivo não encontrado: {test_file}")
-            falhas += 1
-            continue
+    res = subprocess.run(
+        [sys.executable, test_suite_path],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    elapsed = time.time() - start_t
 
-        print(f"\n[{idx}/{len(TEST_FILES)}] Executando {test_file}...")
-        start_t = time.time()
-        
-        # Executa o processo do teste com o mesmo interpretador Python
-        res = subprocess.run(
-            [sys.executable, test_path],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace"
-        )
-        elapsed = time.time() - start_t
+    print(res.stdout)
+    if res.stderr and "FAILED" in res.stderr:
+        print("--- DETALHES DE ERRO ---")
+        print(res.stderr)
 
-        if res.returncode == 0:
-            print(f"  [PASS] {test_file} concluído com sucesso ({elapsed:.2f}s)")
-            sucessos += 1
-        else:
-            print(f"  [FAIL] {test_file} FALHOU (código {res.returncode}) em {elapsed:.2f}s")
-            print("--- LOG DE ERRO ---")
-            print(res.stdout)
-            print(res.stderr)
-            print("-------------------")
-            falhas += 1
+    # Descarta o banco temporário; o banco real permanece intacto
+    shutil.rmtree(_TEST_DB_DIR, ignore_errors=True)
 
-    total_elapsed = time.time() - total_start
-    print("\n" + "=" * 70)
-    print("[RELATÓRIO] RESUMO DA EXECUÇÃO:")
-    print(f"  Total de Suítes: {len(TEST_FILES)}")
-    print(f"  Sucessos:        {sucessos}")
-    print(f"  Falhas:          {falhas}")
-    print(f"  Tempo Total:     {total_elapsed:.2f}s")
+    print("=" * 70)
+    print(f"[RELATÓRIO] SUÍTE CONSOLIDADA DE TESTES: {'PASS' if res.returncode == 0 else 'FAIL'} ({elapsed:.2f}s)")
     print("=" * 70)
 
-    if falhas == 0:
-        # Normalização de segurança para garantir banco 100% limpo com apenas 15 produtos e 1 gerente
-        try:
-            import clean_sqlite
-            clean_sqlite.main()
-        except Exception:
-            pass
-        print("[SUCESSO] Todos os testes passaram com 100% de aproveitamento.")
+    if res.returncode == 0:
+        print("[SUCESSO] Todos os módulos de teste passaram com 100% de aproveitamento.")
         sys.exit(0)
     else:
-        print(f"[ALERTA] {falhas} teste(s) apresentaram falhas. Verifique o log acima.")
+        print(f"[ALERTA] Falhas detectadas na suíte de testes. Verifique o log acima.")
         sys.exit(1)
 
 if __name__ == "__main__":

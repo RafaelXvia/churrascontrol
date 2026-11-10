@@ -2,11 +2,18 @@
 Limpeza e Normalização Estrita do SQLite — ChurrasControl
 Deixa estritamente apenas os 15 produtos de catálogo e o Gerente Administrador.
 Todas as demais tabelas e sequências são resetadas.
+
+ATENÇÃO: operação DESTRUTIVA (apaga comandas, itens, mesas e colaboradores = histórico de vendas).
+Não é mais executada automaticamente pela suíte de testes. Uso manual:
+    python tools/clean_sqlite.py --confirmar
 """
 import sqlite3
 import os
+import sys
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "churrascontrol.db")
+DB_PATH = os.getenv("CHURRAS_DB_PATH") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "churrascontrol.db"
+)
 
 def main():
     conn = sqlite3.connect(DB_PATH)
@@ -49,4 +56,9 @@ def main():
     conn.close()
 
 if __name__ == "__main__":
+    if "--confirmar" not in sys.argv:
+        print(f"Operação destrutiva sobre: {DB_PATH}")
+        print("Isso apaga TODO o histórico de comandas, itens, mesas e colaboradores.")
+        print("Para executar, rode: python tools/clean_sqlite.py --confirmar")
+        sys.exit(1)
     main()

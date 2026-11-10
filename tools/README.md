@@ -6,15 +6,18 @@ Este diretório centraliza todas as ferramentas de verificação, baterias de te
 
 ## 🛠️ Ferramentas Disponíveis
 
+### Utilitários Operacionais e de Sincronização
 | Arquivo | Descrição | Como Executar |
 | :--- | :--- | :--- |
-| **`run_all.py`** | **Orquestrador Central**: Executa todas as suítes de testes em sequência e gera um relatório com status e tempos de execução. | `python tools/run_all.py` |
-| **`db_diagnostics.py`** | **Diagnóstico do Banco**: Inspeciona a integridade física do SQLite, modo WAL, chaves estrangeiras, contagem de tabelas e status da fila de sincronização com o Xano. | `python tools/db_diagnostics.py` |
-| **`test_app.py`** | Valida a sintaxe e compilação de todas as páginas (`app.py`, `pages/*.py`) e operações do [data_manager.py](../data_manager.py). | `python tools/test_app.py` |
-| **`test_sqlite_sync.py`** | Testa o ciclo de vida completo de mesa, abertura de comanda, agregação atômica de produtos, fechamento e gravação na fila SQLite. | `python tools/test_sqlite_sync.py` |
-| **`test_security_performance.py`** | Valida restrições de domínio (preço negativo/zero), sanitização XSS, cardinalidade 1:1 de comanda por mesa e índices de performance. | `python tools/test_security_performance.py` |
-| **`test_cardapio_delivery.py`** | Valida o schema completo de produtos (fotos Unsplash, descrição, estoque `qtd_disp`, flag `precisa_produzir` e disponibilidade). | `python tools/test_cardapio_delivery.py` |
-| **`test_cardapio_cliente_qrcode.py`** | Testa a geração de tokens de QR Code para mesas, baixa automática de estoque na venda e confirmação de pré-comanda de cliente. | `python tools/test_cardapio_cliente_qrcode.py` |
+| **`db_diagnostics.py`** | **Diagnóstico do Banco**: Inspeciona a integridade física do SQLite, modo de journal, chaves estrangeiras, contagem de todas as tabelas (produtos, comandas, colaboradores, sessões, auditoria), detalhamento de faturamento por status e erros na fila Xano. | `python tools/db_diagnostics.py` |
+| **`seed_clean_xano.py`** | **Carga Inicial Xano**: Envia o catálogo de produtos e o colaborador gerente do SQLite para o Xano respeitando o rate limit de 2.5s por requisição. | `python tools/seed_clean_xano.py` |
+| **`clean_sqlite.py`** | **Reset de Banco (Manual/Controlado)**: Limpeza profunda que preserva catálogo e gerente. Exige confirmação explícita (`--confirmar`) e **não roda automaticamente** para proteger o histórico de vendas. | `python tools/clean_sqlite.py --confirmar` |
+
+### Bateria de Testes Automatizados (Consolidada)
+| Arquivo | Descrição | Como Executar |
+| :--- | :--- | :--- |
+| **`run_all.py`** | **Orquestrador Central**: Executa a suíte completa de testes em um banco temporário isolado (sem tocar no banco real) e emite relatório executivo. | `python tools/run_all.py` |
+| **`test_suite.py`** | **Suíte Unificada de Testes**: Reúne em 6 módulos integrados todas as validações de: sintaxe de telas, catálogo/delivery, salão/mesas/QR Code, segurança/XSS/regras SQLite, autenticação/RBAC e imutabilidade de vendas pós-restart. | `python tools/test_suite.py` |
 
 ---
 
