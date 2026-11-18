@@ -1,0 +1,13 @@
+NOME DO GRUPO: Code
+
+INTEGRANTES:
+- Gabrielli Costa Leite (gabrielli.leite@aluno.impacta.edu.br)
+- Isabela Maia Cordeiro da Silva (isabela.maia@aluno.impacta.edu.br)
+- Joao Pedro Cunha de Caprio Ferreira (joao.cpedro@aluno.impacta.edu.br)
+- Rafael Paiva Weirich (rafael.weirich@aluno.impacta.edu.br
+)
+LINK DO VÍDEO NO YOUTUBE (NÃO LISTADO):
+[INSERIR LINK DO VÍDEO NO YOUTUBE AQUI]
+
+LINK DO GITHUB PÚBLICO:
+https://github.com/RafaelXvia/churrascontrol
