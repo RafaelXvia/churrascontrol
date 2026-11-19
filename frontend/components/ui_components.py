@@ -1396,13 +1396,15 @@ def exigir_autenticacao() -> dict:
         _injetar_script_recuperacao_sessao()
 
     # 4. Exibe a Tela de Login Sofisticada & Moderna
-    st.markdown("""
+    logo_login_uri = _get_logo_data_uri()
+    logo_login_html = (
+        f'<img src="{logo_login_uri}" alt="ChurrasControl" style="width: 150px; height: auto; object-fit: contain; margin-bottom: 10px;" />'
+        if logo_login_uri
+        else ""
+    )
+    st.markdown(f"""
     <div class="cc-login-hero-container">
-        <div class="cc-login-icon-box">
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-            </svg>
-        </div>
+        {logo_login_html}
         <h1 class="cc-login-title">
             CHURRAS<span>CONTROL</span>
         </h1>
