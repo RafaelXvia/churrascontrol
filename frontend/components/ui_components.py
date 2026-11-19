@@ -1524,6 +1524,7 @@ def verificar_permissao_acesso(cargos_permitidos: list) -> dict:
 def _get_logo_data_uri() -> str:
     """Carrega frontend/assets/logo.png como data URI em base64 para uso na navbar."""
     import base64
+    import os
     logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "logo.png")
     if os.path.exists(logo_path):
         with open(logo_path, "rb") as img_f:
