@@ -1518,6 +1518,17 @@ def verificar_permissao_acesso(cargos_permitidos: list) -> dict:
         st.stop()
     return usuario
 
+@st.cache_data(show_spinner=False)
+def _get_logo_data_uri() -> str:
+    """Carrega frontend/assets/logo.png como data URI em base64 para uso na navbar."""
+    import base64
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "logo.png")
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as img_f:
+            b64 = base64.b64encode(img_f.read()).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+    return ""
+
 def render_navbar(active_tab: str = "home"):
     """
     Renderiza a barra superior de navegação moderna, adaptada dinamicamente ao cargo do colaborador:
@@ -1544,13 +1555,9 @@ def render_navbar(active_tab: str = "home"):
             c_brand, c_nav1, c_nav2, c_nav3, c_nav4, c_nav5, c_nav6, c_nav7, c_user = cols
             
             with c_brand:
-                st.markdown("""
+                st.markdown(f"""
                 <div class="cc-navbar-brand">
-                    <div class="cc-navbar-logo">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                        </svg>
-                    </div>
+                    <div class="cc-navbar-logo">{f'<img src="{_get_logo_data_uri()}" alt="ChurrasControl" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;" />' if _get_logo_data_uri() else ""}</div>
                     <div>
                         <div class="cc-navbar-title">
                             CHURRAS<span>CONTROL</span>
@@ -1594,13 +1601,9 @@ def render_navbar(active_tab: str = "home"):
             c_brand, c_nav1, c_nav2, c_user = cols
 
             with c_brand:
-                st.markdown("""
+                st.markdown(f"""
                 <div class="cc-navbar-brand">
-                    <div class="cc-navbar-logo">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                        </svg>
-                    </div>
+                    <div class="cc-navbar-logo">{f'<img src="{_get_logo_data_uri()}" alt="ChurrasControl" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;" />' if _get_logo_data_uri() else ""}</div>
                     <div>
                         <div class="cc-navbar-title">
                             CHURRAS<span>CONTROL</span>
@@ -1638,13 +1641,9 @@ def render_navbar(active_tab: str = "home"):
         m_brand, m_avatar, m_menu = st.columns([3.0, 0.8, 0.8], vertical_alignment="center")
 
         with m_brand:
-            st.markdown("""
+            st.markdown(f"""
             <div class="cc-navbar-brand">
-                <div class="cc-navbar-logo">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                    </svg>
-                </div>
+                <div class="cc-navbar-logo">{f'<img src="{_get_logo_data_uri()}" alt="ChurrasControl" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px;" />' if _get_logo_data_uri() else ""}</div>
                 <div>
                     <div class="cc-navbar-title">
                         CHURRAS<span>CONTROL</span>

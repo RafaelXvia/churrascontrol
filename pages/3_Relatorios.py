@@ -5,6 +5,7 @@ from backend.database import data_manager
 from frontend.components import ui_components
 
 st.set_page_config(
+    page_icon="frontend/assets/logo.png",
     page_title="Relatórios e Dashboard - ChurrasControl",
     layout="wide",
     initial_sidebar_state="collapsed"

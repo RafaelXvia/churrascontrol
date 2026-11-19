@@ -26,6 +26,7 @@ from frontend.components import ui_components
 from backend.ai import assistente_ia
 
 st.set_page_config(
+    page_icon="frontend/assets/logo.png",
     page_title="Assistente IA - ChurrasControl",
     layout="wide",
     initial_sidebar_state="collapsed"

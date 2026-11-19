@@ -55,6 +55,7 @@ def _injetar_mascara_telefone():
     components.html(js_mask, height=0, width=0)
 
 st.set_page_config(
+    page_icon="frontend/assets/logo.png",
     page_title="Colaboradores & Acessos - ChurrasControl",
     layout="wide",
     initial_sidebar_state="collapsed"

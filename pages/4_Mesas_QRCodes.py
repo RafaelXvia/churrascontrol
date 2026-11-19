@@ -33,6 +33,7 @@ def detectar_base_url() -> str:
     return "http://localhost:8501"
 
 st.set_page_config(
+    page_icon="frontend/assets/logo.png",
     page_title="ChurrasControl — QR Codes das Mesas",
     layout="wide",
     initial_sidebar_state="collapsed"
