@@ -39,14 +39,14 @@ def seed_ontologia(conn: Optional[sqlite3.Connection] = None) -> None:
 
         # 1. Conceitos Fundamentais
         conceitos = [
-            # Setores Físicos — definidos na spec (varanda:1-4, salao:5-8, kids:9-10)
-            ("varanda", "SETOR_SALAO", "Varanda Externa", "Área externa ao ar livre com vista, mesas 1 a 4"),
-            ("salao_interno", "SETOR_SALAO", "Salão Principal", "Salão climatizado interno, mesas 5 a 8"),
-            ("espaco_kids", "SETOR_SALAO", "Espaço Kids", "Área para famílias com recreação infantil, mesas 9 e 10"),
-            # Turnos Operacionais — definidos explicitamente na spec
-            ("turno_almoco", "TURNO", "Turno Almoço", "Horário de almoço das 11:30 às 15:30"),
-            ("turno_jantar", "TURNO", "Turno Jantar", "Horário de jantar das 18:30 às 23:59"),
-            ("happy_hour", "TURNO", "Happy Hour", "Horário promocional de bebidas das 17:00 às 19:30"),
+            # Setores Físicos — definidos na spec (varanda:1-4, salao_interno:5-8, kids:9-10)
+            ("varanda", "SETOR_SALAO", "Varanda", "Área externa ao ar livre com vista, mesas 1 a 4"),
+            ("salao_interno", "SETOR_SALAO", "Salão Interno", "Salão climatizado interno, mesas 5 a 8"),
+            ("espaco_kids", "SETOR_SALAO", "Kids", "Área para famílias com recreação infantil, mesas 9 e 10"),
+            # Turnos Operacionais — sem sobreposicao
+            ("turno_almoco", "TURNO", "Turno Almoço", "Horário de almoço das 11:30:00 às 15:30:00"),
+            ("turno_jantar", "TURNO", "Turno Jantar", "Horário de jantar das 18:30:00 às 23:59:59 (comandas de 00:00:00 às 05:59:59 associadas ao jantar da data anterior)"),
+            ("happy_hour", "TURNO", "Happy Hour", "Horário promocional de bebidas das 17:00:00 às 18:29:59"),
             # Classes do Cardápio — definidas na spec; produtos de referência do domínio churrasco
             ("carnes", "CATEGORIA", "Carnes e Cortes Nobres", "Categoria Carnes do cardápio (ex: Picanha Smokehouse Parrilla)"),
             ("churrasco", "CATEGORIA", "Churrasco", "Pratos principais de carnes assadas e grelhadas"),
@@ -61,7 +61,8 @@ def seed_ontologia(conn: Optional[sqlite3.Connection] = None) -> None:
             ("sobremesas", "CATEGORIA", "Sobremesas", "Doces típicos e sobremesas da casa"),
             # Axiomas Contábeis — definidos na spec
             ("regra_faturamento_paga", "REGRA", "Axioma de Receita", "Faturamento considera exclusivamente comandas com status PAGA"),
-            ("regra_preco_historico", "REGRA", "Axioma de Imutabilidade", "Cálculos utilizam preco_momento preservado na comanda")
+            ("regra_preco_historico", "REGRA", "Axioma de Imutabilidade", "Cálculos utilizam preco_momento preservado na comanda"),
+            ("regra_turno_meia_noite", "REGRA", "Axioma de Meia-Noite e Madrugada", "Comandas abertas entre 00:00:00 e 05:59:59 pertencem contabilmente ao Jantar do dia anterior; antes da meia-noite pertencem ao turno e data da sua data_abertura")
         ]
 
         for cid, ctipo, cnome, cdesc in conceitos:
@@ -84,43 +85,62 @@ def seed_ontologia(conn: Optional[sqlite3.Connection] = None) -> None:
             # Setor Varanda (spec: mesas 1–4)
             ("varanda", "varanda"),
             ("varandinha", "varanda"),
+            ("varanda externa", "varanda"),
             ("la fora", "varanda"),
             ("lá fora", "varanda"),
             ("area externa", "varanda"),
             ("área externa", "varanda"),
             ("deck", "varanda"),
             ("ao ar livre", "varanda"),
+            ("ar livre", "varanda"),
+            ("externo", "varanda"),
+            ("externa", "varanda"),
             # Salão Interno (spec: mesas 5–8)
             ("salao", "salao_interno"),
             ("salão", "salao_interno"),
             ("salao principal", "salao_interno"),
             ("salão principal", "salao_interno"),
             ("salao_principal", "salao_interno"),
+            ("salao interno", "salao_interno"),
+            ("salão interno", "salao_interno"),
+            ("salao_interno", "salao_interno"),
             ("interno", "salao_interno"),
             ("climatizado", "salao_interno"),
-            ("salao interno", "salao_interno"),
+            ("area interna", "salao_interno"),
+            ("área interna", "salao_interno"),
             ("dentro", "salao_interno"),
             # Espaço Kids (spec: mesas 9–10)
             ("kids", "espaco_kids"),
             ("espaco kids", "espaco_kids"),
             ("espaço kids", "espaco_kids"),
+            ("espaco_kids", "espaco_kids"),
+            ("area kids", "espaco_kids"),
+            ("área kids", "espaco_kids"),
             ("criancas", "espaco_kids"),
             ("crianças", "espaco_kids"),
             ("familias", "espaco_kids"),
             ("famílias", "espaco_kids"),
             ("brinquedoteca", "espaco_kids"),
+            ("recreacao", "espaco_kids"),
+            ("recreação", "espaco_kids"),
             # Turnos (spec: almoço, jantar, happy hour)
             ("almoco", "turno_almoco"),
             ("almoço", "turno_almoco"),
             ("meio-dia", "turno_almoco"),
             ("horario de almoco", "turno_almoco"),
+            ("turno almoco", "turno_almoco"),
+            ("turno almoço", "turno_almoco"),
             ("jantar", "turno_jantar"),
             ("janta", "turno_jantar"),
             ("noite", "turno_jantar"),
             ("noturno", "turno_jantar"),
+            ("turno jantar", "turno_jantar"),
             ("happy hour", "happy_hour"),
             ("happy_hour", "happy_hour"),
+            ("happyhour", "happy_hour"),
+            ("happy", "happy_hour"),
             ("final de tarde", "happy_hour"),
+            ("fim de tarde", "happy_hour"),
             # Cardápio — spec cita termos informais para cerveja e carne
             ("churrasco", "churrasco"),
             ("churras", "churrasco"),
@@ -168,13 +188,13 @@ def seed_ontologia(conn: Optional[sqlite3.Connection] = None) -> None:
             ("salao_interno", "contem_mesa", "8"),
             ("espaco_kids", "contem_mesa", "9"),
             ("espaco_kids", "contem_mesa", "10"),
-            # Turnos (Horários) — spec
-            ("turno_almoco", "horario_inicio", "11:30"),
-            ("turno_almoco", "horario_fim", "15:30"),
-            ("turno_jantar", "horario_inicio", "18:30"),
-            ("turno_jantar", "horario_fim", "23:59"),
-            ("happy_hour", "horario_inicio", "17:00"),
-            ("happy_hour", "horario_fim", "19:30"),
+            # Turnos (Horarios sem sobreposicao) — spec
+            ("turno_almoco", "horario_inicio", "11:30:00"),
+            ("turno_almoco", "horario_fim", "15:30:00"),
+            ("happy_hour", "horario_inicio", "17:00:00"),
+            ("happy_hour", "horario_fim", "18:29:59"),
+            ("turno_jantar", "horario_inicio", "18:30:00"),
+            ("turno_jantar", "horario_fim", "23:59:59"),
             # Hierarquia de Cardápio — spec (sem carnes_nobres)
             ("picanha", "subclasse_de", "carnes"),
             ("ancho", "subclasse_de", "carnes"),
@@ -184,6 +204,9 @@ def seed_ontologia(conn: Optional[sqlite3.Connection] = None) -> None:
             ("cerveja", "subclasse_de", "bebidas"),
             ("chopp", "subclasse_de", "bebidas")
         ]
+
+        # Limpa horarios legados para garantir atualizacao de valores sem sobreposicao
+        cur.execute("DELETE FROM ontologia_relacoes WHERE predicado IN ('horario_inicio', 'horario_fim')")
 
         # Remove relações de conceitos inventados que possam existir no banco
         cur.execute("""
@@ -290,6 +313,33 @@ def obter_mesas_por_setor(setor: str, conn: Optional[sqlite3.Connection] = None)
         """, (setor_id,))
         rows = cur.fetchall()
         return [r["mesa_num"] for r in rows if r["mesa_num"] is not None]
+    finally:
+        if propria_conexao and conn:
+            conn.close()
+
+def obter_setor_da_mesa(mesa_num: int, conn: Optional[sqlite3.Connection] = None) -> str:
+    """
+    Retorna o nome legivel do setor associado a uma mesa fisica via ontologia SQLite.
+    Se a mesa nao possuir vinculo cadastrado, retorna 'Sem setor'.
+    """
+    propria_conexao = False
+    if conn is None:
+        conn = data_manager.get_connection()
+        propria_conexao = True
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT c.nome_legivel
+        FROM ontologia_relacoes r
+        JOIN ontologia_conceitos c ON r.sujeito_id = c.id
+        WHERE r.predicado = 'contem_mesa' AND r.objeto_id = ?
+        LIMIT 1
+        """, (str(mesa_num),))
+        row = cur.fetchone()
+        if row and row["nome_legivel"]:
+            return str(row["nome_legivel"])
+        return "Sem setor"
     finally:
         if propria_conexao and conn:
             conn.close()

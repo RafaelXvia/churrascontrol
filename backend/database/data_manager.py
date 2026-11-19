@@ -249,6 +249,7 @@ def init_db(tentativa_recuperacao: bool = False):
                 taxa_servico INTEGER NOT NULL DEFAULT 1 CHECK(taxa_servico IN (0, 1)),
                 qtd_pessoas INTEGER NOT NULL DEFAULT 1 CHECK(qtd_pessoas >= 1),
                 valor_total REAL NOT NULL DEFAULT 0.0 CHECK(valor_total >= 0.0),
+                is_demo INTEGER NOT NULL DEFAULT 0 CHECK(is_demo IN (0, 1)),
                 FOREIGN KEY(mesa_id) REFERENCES mesas(id) ON DELETE SET NULL
             );
             """)
@@ -310,11 +311,18 @@ def init_db(tentativa_recuperacao: bool = False):
             if "disponivel" not in colunas_produtos:
                 cursor.execute("ALTER TABLE produtos ADD COLUMN disponivel INTEGER DEFAULT 1;")
 
+            # 6.1 Atualização incremental da tabela de COMANDAS (coluna is_demo para segregação)
+            cursor.execute("PRAGMA table_info(comandas);")
+            colunas_comandas = [c["name"] for c in cursor.fetchall()]
+            if "is_demo" not in colunas_comandas:
+                cursor.execute("ALTER TABLE comandas ADD COLUMN is_demo INTEGER DEFAULT 0;")
+
             # 7. Índices de Alta Performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos(codigo_pdv);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_produtos_categoria ON produtos(categoria);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_itens_comanda_cid ON itens_comanda(comanda_id);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_comandas_is_demo ON comandas(is_demo);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_fila_status ON fila_sincronizacao(status);")
 
             # 8. Tabela de QR Codes e Tokens Estáveis por Mesa Física

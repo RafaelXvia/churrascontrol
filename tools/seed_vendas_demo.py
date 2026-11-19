@@ -78,12 +78,12 @@ def gerar_vendas_demo(dias: int = 60, comandas_por_dia: int = 2, db_path: str = 
                 qtd_pessoas = random.randint(2, 6)
                 taxa_servico = 1
 
-                # Cria comanda PAGA
+                # Cria comanda PAGA marcada como dados de demonstracao (is_demo = 1)
                 cur.execute("""
                 INSERT INTO comandas (
                     mesa_id, numero_mesa_historico, data_abertura, data_fechamento,
-                    status, taxa_servico, qtd_pessoas, valor_total
-                ) VALUES (?, ?, ?, ?, 'PAGA', ?, ?, 0.0)
+                    status, taxa_servico, qtd_pessoas, valor_total, is_demo
+                ) VALUES (?, ?, ?, ?, 'PAGA', ?, ?, 0.0, 1)
                 """, (
                     mesa_id, mesa_num, abertura.isoformat(), fechamento.isoformat(),
                     taxa_servico, qtd_pessoas

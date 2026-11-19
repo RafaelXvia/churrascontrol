@@ -1,0 +1,12 @@
+id: "2026-11-18-melhorias-assistente-ia"
+title: "Melhorias de Comportamento, Resiliencia e Redesign Visual do Assistente IA"
+created_at: "2026-11-18"
+status: "in_progress"
+author: "Antigravity AI & Rafael"
+description: >
+  Aprimoramento abrangente do Assistente IA do Gerente: priorizacao configuravel
+  de modelos LLM, classificacao inteligente de falhas (diferenciando rate limit de chave
+  invalida e requisicao malformada), cooldown formalizado com suporte a Retry-After,
+  tratamento de ambiguidades e lacunas temporais (meia-noite e Happy Hour), isolamento
+  de vendas de demonstracao (is_demo), manutencao de contexto conversacional e redesign
+  visual corporativo completo da tela 8 com gerenciador lateral de conversas e graficos nativos.

@@ -42,11 +42,13 @@ CREATE TABLE IF NOT EXISTS comandas (
     taxa_servico INTEGER DEFAULT 1,
     qtd_pessoas INTEGER DEFAULT 1,
     valor_total REAL DEFAULT 0.0,
+    is_demo INTEGER DEFAULT 0,
     FOREIGN KEY(mesa_id) REFERENCES mesas(id) ON DELETE SET NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_comanda_unica_aberta 
     ON comandas(mesa_id) WHERE status = 'ABERTA';
 CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
+CREATE INDEX IF NOT EXISTS idx_comandas_is_demo ON comandas(is_demo);
 
 -- 4. Itens Lançados em Comanda (com imutabilidade histórica de preço)
 CREATE TABLE IF NOT EXISTS itens_comanda (

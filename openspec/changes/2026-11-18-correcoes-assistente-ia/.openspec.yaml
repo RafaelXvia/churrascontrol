@@ -1,0 +1,13 @@
+id: "2026-11-18-correcoes-assistente-ia"
+title: "Correcoes de Robustez, Classificacao de Erros, Ontologia e Sanitizacao do Assistente IA"
+created_at: "2026-11-18"
+status: "in_progress"
+author: "Antigravity AI & Rafael"
+description: >
+  Revisao profunda e correcoes tecnicas no Assistente IA: classificacao de erros baseada
+  no codigo HTTP do SDK com word boundaries, desambiguacao de cotas diarias (PerDay),
+  filtragem rigorosa de modelos gemini- compativeis com function calling, unificacao de
+  parametros setor e turno em todas as ferramentas analiticas, repasse de ignorar_demo via
+  contexto thread-local, eliminacao de sobreposicao de turnos, resolucao de setores 100% via
+  ontologia, sanitizacao estrita de chaves de API com sanitizar_texto() em logs e UI, e
+  checagem de propriedade nas sessoes de chat.
