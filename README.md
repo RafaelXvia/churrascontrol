@@ -43,15 +43,14 @@ Estabelecimentos de pequeno e médio porte frequentemente enfrentam:
    O sistema abrirá automaticamente em `http://localhost:8501` (ou via `python run.py` na porta `8080`).
 
 ### Deploy em Nuvem (Discloud)
-O projeto conta com configuração pronta para hospedagem na plataforma Discloud (`discloud.config` e `.discloudignore`).
+O aplicativo está hospedado na plataforma Discloud (`https://churrascontrol.discloud.dev`), com configuração em `discloud.config` e `.discloudignore`.
 
 ### Credenciais de Demonstração
-O banco de dados inicial já possui contas pré-cadastradas para testes:
+O banco de dados inicial conta com o usuário administrador pré-cadastrado (novos operadores de Caixa podem ser criados pelo Gerente na aba Colaboradores):
 
 | Perfil | E-mail | Senha |
 | :--- | :--- | :--- |
-| **Gerente** | `gerente@churrascontrol.com` | `1q2w` |
-| **Caixa** | `joao@churrascontrol.com` | `1q2w` |
+| **Gerente (Admin)** | `gerente@churrascontrol.com` | `1q2w3e4r` |
 
 ---
 

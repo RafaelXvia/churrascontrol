@@ -3,6 +3,8 @@
 .gemini
 __pycache__
 venv
+.venv
+discloud
 .vscode
 .cache
 test_*.py
